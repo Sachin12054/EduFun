@@ -5,12 +5,12 @@ import {
   TextInput,
   TouchableOpacity,
   StyleSheet,
+  SafeAreaView,
   KeyboardAvoidingView,
   ScrollView,
   Platform,
   Alert,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../contexts/AuthContext';
@@ -196,34 +196,74 @@ const AuthScreen = ({ route }) => {
 
                 {!isLogin && (
                   <>
-                    {renderInput('firstName', 'First Name', 'person', { autoCapitalize: 'words' })}
-                    {renderInput('lastName', 'Last Name', 'person', { autoCapitalize: 'words' })}
-                    
-                    {userType === 'student' && (
-                      <>
-                        {renderInput('className', 'Class (e.g., 5th Grade)', 'school', { autoCapitalize: 'words' })}
-                        {renderInput('section', 'Section (e.g., A)', 'bookmark', { autoCapitalize: 'characters' })}
-                        {renderInput('rollNumber', 'Roll Number (Optional)', 'calculator')}
-                      </>
-                    )}
-                    
-                    {renderInput('phoneNumber', 'Phone Number (Optional)', 'call', { keyboardType: 'phone-pad' })}
+                    <View style={styles.inputContainer}>
+                      <Text style={styles.inputLabel}>📝 Your Full Name</Text>
+                      <TextInput
+                        style={styles.input}
+                        placeholder="Enter your full name"
+                        value={name}
+                        onChangeText={setName}
+                        autoCapitalize="words"
+                      />
+                    </View>
+
+                    <View style={styles.inputContainer}>
+                      <Text style={styles.inputLabel}>🎒 Class & Section</Text>
+                      <TextInput
+                        style={styles.input}
+                        placeholder="e.g., 5th Grade - A"
+                        value={classSection}
+                        onChangeText={setClassSection}
+                        autoCapitalize="words"
+                      />
+                    </View>
+
+                    <View style={styles.inputContainer}>
+                      <Text style={styles.inputLabel}>🌍 Country</Text>
+                      <TextInput
+                        style={styles.input}
+                        placeholder="Enter your country"
+                        value={country}
+                        onChangeText={setCountry}
+                        autoCapitalize="words"
+                      />
+                    </View>
+
+                    <View style={styles.inputContainer}>
+                      <Text style={styles.inputLabel}>🏛️ State</Text>
+                      <TextInput
+                        style={styles.input}
+                        placeholder="Enter your state"
+                        value={state}
+                        onChangeText={setState}
+                        autoCapitalize="words"
+                      />
+                    </View>
                   </>
                 )}
 
-                {renderInput('email', 'Email Address', 'mail', { keyboardType: 'email-address' })}
-                
-                {renderInput('password', 'Password', 'lock-closed', {
-                  secure: true,
-                  showPassword: showPassword,
-                  togglePassword: () => setShowPassword(!showPassword)
-                })}
+                <View style={styles.inputContainer}>
+                  <Text style={styles.inputLabel}>📧 Email Address</Text>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Enter your email"
+                    value={email}
+                    onChangeText={setEmail}
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                  />
+                </View>
 
-                {!isLogin && renderInput('confirmPassword', 'Confirm Password', 'lock-closed', {
-                  secure: true,
-                  showPassword: showConfirmPassword,
-                  togglePassword: () => setShowConfirmPassword(!showConfirmPassword)
-                })}
+                <View style={styles.inputContainer}>
+                  <Text style={styles.inputLabel}>🔒 Password</Text>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Enter your password"
+                    value={password}
+                    onChangeText={setPassword}
+                    secureTextEntry
+                  />
+                </View>
 
                 {isLogin && (
                   <TouchableOpacity style={styles.forgotPassword}>
@@ -233,20 +273,11 @@ const AuthScreen = ({ route }) => {
 
                 <TouchableOpacity
                   style={styles.button}
-                  onPress={handleSubmit}
+                  onPress={handleAuth}
                   disabled={loading}
                 >
                   <Text style={styles.buttonText}>
                     {loading ? '⏳ Loading...' : (isLogin ? '🚀 Let\'s Go!' : '🎉 Create Account')}
-                  </Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={styles.secondaryButton}
-                  onPress={toggleMode}
-                >
-                  <Text style={styles.secondaryButtonText}>
-                    {isLogin ? '🌟 New here? Create an account' : '🔑 Already have an account? Sign In'}
                   </Text>
                 </TouchableOpacity>
 
@@ -362,25 +393,21 @@ const styles = StyleSheet.create({
   },
   inputContainer: {
     marginBottom: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
+  },
+  inputLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#374151',
+    marginBottom: 8,
+  },
+  input: {
     borderWidth: 2,
     borderColor: '#E5E7EB',
     borderRadius: 15,
-    backgroundColor: '#F9FAFB',
-    paddingHorizontal: 15,
-  },
-  inputIcon: {
-    marginRight: 10,
-  },
-  input: {
-    flex: 1,
     padding: 15,
     fontSize: 16,
+    backgroundColor: '#F9FAFB',
     color: '#1F2937',
-  },
-  eyeIcon: {
-    padding: 10,
   },
   forgotPassword: {
     alignItems: 'center',
@@ -424,16 +451,6 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '600',
-  },
-  secondaryButton: {
-    paddingVertical: 12,
-    alignItems: 'center',
-    marginTop: 10,
-  },
-  secondaryButtonText: {
-    color: '#3B82F6',
-    fontSize: 15,
-    fontWeight: '500',
   },
   demoInfo: {
     backgroundColor: 'rgba(255, 255, 255, 0.2)',

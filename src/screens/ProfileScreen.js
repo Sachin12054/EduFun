@@ -12,7 +12,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '../contexts/AuthContext';
 
 const ProfileScreen = () => {
-  const { userData, userStats, logout, currentUser } = useAuth();
+  const { userProfile, user, logout } = useAuth();
 
   const handleLogout = () => {
     Alert.alert(
@@ -51,18 +51,18 @@ const ProfileScreen = () => {
         <View style={styles.profileHeader}>
           <View style={styles.avatar}>
             <Text style={styles.avatarText}>
-              {(userData?.name || currentUser?.displayName || 'U').charAt(0).toUpperCase()}
+              {(userProfile?.name || user?.displayName || 'U').charAt(0).toUpperCase()}
             </Text>
           </View>
           <Text style={styles.userName}>
-            {userData?.name || currentUser?.displayName || 'User'}
+            {userProfile?.name || user?.displayName || 'User'}
           </Text>
           <Text style={styles.userEmail}>
-            {userData?.email || currentUser?.email}
+            {userProfile?.email || user?.email}
           </Text>
-          {userData?.role && (
+          {userProfile?.role && (
             <View style={styles.roleBadge}>
-              <Text style={styles.roleText}>{userData.role.toUpperCase()}</Text>
+              <Text style={styles.roleText}>{userProfile.role.toUpperCase()}</Text>
             </View>
           )}
         </View>
@@ -75,22 +75,22 @@ const ProfileScreen = () => {
           <View style={styles.statsContainer}>
             <StatItem 
               title="Total Points" 
-              value={userStats?.totalPoints || userData?.total_points || 0} 
+              value={userProfile?.totalPoints || userProfile?.total_points || 0} 
               color="#10B981" 
             />
             <StatItem 
               title="Badges Earned" 
-              value={userStats?.totalBadges || userData?.total_badges || 0} 
+              value={userProfile?.totalBadges || userProfile?.total_badges || 0} 
               color="#F59E0B" 
             />
             <StatItem 
               title="Activities Done" 
-              value={userStats?.completedActivities || 0} 
+              value={userProfile?.completedActivities || 0} 
               color="#8B5CF6" 
             />
             <StatItem 
               title="Streak Days" 
-              value={userStats?.streakDays || userData?.streak_days || 0} 
+              value={userProfile?.streakDays || userProfile?.streak_days || 0} 
               color="#EF4444" 
             />
           </View>
@@ -100,36 +100,36 @@ const ProfileScreen = () => {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Profile Information</Text>
           <View style={styles.profileItems}>
-            {userData?.class_level && (
+            {userProfile?.class_level && (
               <ProfileItem 
                 icon="🎓" 
                 title="Class" 
-                value={`Class ${userData.class_level}`}
-                onPress={() => Alert.alert('Class', `You are in Class ${userData.class_level}`)}
+                value={`Class ${userProfile.class_level}`}
+                onPress={() => Alert.alert('Class', `You are in Class ${userProfile.class_level}`)}
               />
             )}
-            {userData?.section && (
+            {userProfile?.section && (
               <ProfileItem 
                 icon="📚" 
                 title="Section" 
-                value={`Section ${userData.section}`}
-                onPress={() => Alert.alert('Section', `You are in Section ${userData.section}`)}
+                value={`Section ${userProfile.section}`}
+                onPress={() => Alert.alert('Section', `You are in Section ${userProfile.section}`)}
               />
             )}
-            {userData?.country && (
+            {userProfile?.country && (
               <ProfileItem 
                 icon="🌍" 
                 title="Country" 
-                value={userData.country}
-                onPress={() => Alert.alert('Country', userData.country)}
+                value={userProfile.country}
+                onPress={() => Alert.alert('Country', userProfile.country)}
               />
             )}
-            {userData?.state && (
+            {userProfile?.state && (
               <ProfileItem 
                 icon="📍" 
                 title="State" 
-                value={userData.state}
-                onPress={() => Alert.alert('State', userData.state)}
+                value={userProfile.state}
+                onPress={() => Alert.alert('State', userProfile.state)}
               />
             )}
           </View>

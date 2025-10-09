@@ -1,8 +1,8 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { onAuthStateChanged, signOut } from 'firebase/auth';
+import { onAuthStateChanged, signOut, createUserWithEmailAndPassword, signInWithEmailAndPassword } from 'firebase/auth';
+import { doc, setDoc, getDoc, updateDoc } from 'firebase/firestore';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { auth } from '../config/firebase';
-import api from '../services/api';
+import { auth, db } from '../config/firebase';
 
 const AuthContext = createContext();
 
@@ -15,9 +15,8 @@ export const useAuth = () => {
 };
 
 export const AuthProvider = ({ children }) => {
-  const [currentUser, setCurrentUser] = useState(null);
-  const [userData, setUserData] = useState(null);
-  const [userStats, setUserStats] = useState(null);
+  const [user, setUser] = useState(null);
+  const [userProfile, setUserProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -26,31 +25,11 @@ export const AuthProvider = ({ children }) => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       try {
         if (user) {
-          setCurrentUser(user);
-          
-          // Get user data from backend API
-          try {
-            const token = await user.getIdToken();
-            await AsyncStorage.setItem('token', token);
-            
-            const response = await api.get('/auth/me');
-            if (response.data) {
-              setUserData(response.data);
-            }
-            
-            // Get user stats
-            const statsResponse = await api.get('/auth/stats');
-            if (statsResponse.data) {
-              setUserStats(statsResponse.data);
-            }
-          } catch (apiError) {
-            console.error('Error fetching user data:', apiError);
-          }
+          setUser(user);
+          await loadUserProfile(user.uid);
         } else {
-          setCurrentUser(null);
-          setUserData(null);
-          setUserStats(null);
-          await AsyncStorage.removeItem('token');
+          setUser(null);
+          setUserProfile(null);
         }
       } catch (err) {
         console.error('Auth state change error:', err);
@@ -63,23 +42,76 @@ export const AuthProvider = ({ children }) => {
     return () => unsubscribe();
   }, []);
 
-  // Refresh user data
-  const refreshUserData = async () => {
-    if (currentUser) {
-      try {
-        const response = await api.get('/auth/me');
-        if (response.data) {
-          setUserData(response.data);
-        }
-        
-        const statsResponse = await api.get('/auth/stats');
-        if (statsResponse.data) {
-          setUserStats(statsResponse.data);
-        }
-      } catch (err) {
-        console.error('Refresh user data error:', err);
-        setError(err.message);
+  const loadUserProfile = async (uid) => {
+    try {
+      const userDoc = await getDoc(doc(db, 'users', uid));
+      if (userDoc.exists()) {
+        setUserProfile(userDoc.data());
       }
+    } catch (err) {
+      console.error('Error loading user profile:', err);
+    }
+  };
+
+  const createAccount = async (email, password, profileData) => {
+    try {
+      setLoading(true);
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      const user = userCredential.user;
+
+      // Create user profile in Firestore
+      const userProfile = {
+        uid: user?.uid || '',
+        email: user?.email || profileData?.email || '',
+        ...profileData,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+
+      await setDoc(doc(db, 'users', user.uid), userProfile);
+      setUserProfile(userProfile);
+      
+      return { success: true };
+    } catch (err) {
+      console.error('Sign up error:', err);
+      setError(err.message);
+      return { success: false, error: err.message };
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const signIn = async (email, password) => {
+    try {
+      setLoading(true);
+      await signInWithEmailAndPassword(auth, email, password);
+      return { success: true };
+    } catch (err) {
+      console.error('Sign in error:', err);
+      setError(err.message);
+      return { success: false, error: err.message };
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const updateProfile = async (updates) => {
+    if (!user) return { success: false, error: 'No user logged in' };
+
+    try {
+      const updatedProfile = {
+        ...userProfile,
+        ...updates,
+        updatedAt: new Date().toISOString(),
+      };
+
+      await updateDoc(doc(db, 'users', user.uid), updatedProfile);
+      setUserProfile(updatedProfile);
+      return { success: true };
+    } catch (err) {
+      console.error('Update profile error:', err);
+      setError(err.message);
+      return { success: false, error: err.message };
     }
   };
 
@@ -87,10 +119,8 @@ export const AuthProvider = ({ children }) => {
   const logout = async () => {
     try {
       await signOut(auth);
-      await AsyncStorage.removeItem('token');
-      setCurrentUser(null);
-      setUserData(null);
-      setUserStats(null);
+      setUser(null);
+      setUserProfile(null);
     } catch (err) {
       console.error('Logout error:', err);
       setError(err.message);
@@ -98,16 +128,16 @@ export const AuthProvider = ({ children }) => {
   };
 
   const value = {
-    currentUser,
-    userData,
-    userStats,
+    user,
+    userProfile,
     loading,
     error,
-    refreshUserData,
+    createAccount,
+    signIn,
+    updateProfile,
     logout,
-    isAuthenticated: !!currentUser,
-    isAdmin: userData?.role === 'admin',
-    isStudent: userData?.role === 'student'
+    isAuthenticated: !!user,
+    isStudent: userProfile?.userType === 'student',
   };
 
   return (
