@@ -9,8 +9,8 @@ import {
   ScrollView,
   Platform,
   Alert,
+  StatusBar,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../contexts/AuthContext';
@@ -19,6 +19,7 @@ const AuthScreen = ({ route }) => {
   const { userType = 'student' } = route.params || {};
   const { createAccount, signIn, loading } = useAuth();
   const [isLogin, setIsLogin] = useState(true);
+  const [focusedInput, setFocusedInput] = useState(null);
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -113,25 +114,23 @@ const AuthScreen = ({ route }) => {
     resetForm();
     setShowPassword(false);
     setShowConfirmPassword(false);
-  };
-
-  const fillDemoCredentials = () => {
-    setFormData(prev => ({
-      ...prev,
-      email: 'student@demo.com',
-      password: 'demo123',
-    }));
+    setFocusedInput(null);
   };
 
   const renderInput = (field, placeholder, icon, options = {}) => (
-    <View style={styles.inputContainer}>
-      <Ionicons name={icon} size={20} color="#666" style={styles.inputIcon} />
+    <View style={[
+      styles.inputContainer,
+      focusedInput === field && styles.inputContainerFocused
+    ]}>
+      <Ionicons name={icon} size={22} color={focusedInput === field ? '#4F46E5' : '#9CA3AF'} style={styles.inputIcon} />
       <TextInput
         style={styles.input}
         placeholder={placeholder}
-        placeholderTextColor="#999"
+        placeholderTextColor="#9CA3AF"
         value={formData[field]}
         onChangeText={(value) => handleInputChange(field, value)}
+        onFocus={() => setFocusedInput(field)}
+        onBlur={() => setFocusedInput(null)}
         secureTextEntry={options.secure && !options.showPassword}
         keyboardType={options.keyboardType || 'default'}
         autoCapitalize={options.autoCapitalize || 'none'}
@@ -144,8 +143,8 @@ const AuthScreen = ({ route }) => {
         >
           <Ionicons
             name={options.showPassword ? 'eye-off' : 'eye'}
-            size={20}
-            color="#666"
+            size={22}
+            color="#9CA3AF"
           />
         </TouchableOpacity>
       )}
@@ -153,45 +152,59 @@ const AuthScreen = ({ route }) => {
   );
 
   return (
-    <SafeAreaView style={styles.container}>
-      <KeyboardAvoidingView 
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={styles.keyboardView}
+    <View style={styles.container}>
+      <StatusBar barStyle="light-content" backgroundColor="#4F46E5" />
+      <LinearGradient
+        colors={['#4F46E5', '#7C3AED']}
+        style={styles.gradient}
       >
-        <LinearGradient
-          colors={['#3B82F6', '#1D4ED8']}
-          style={styles.gradient}
+        <KeyboardAvoidingView 
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={styles.keyboardView}
         >
-          <ScrollView contentContainerStyle={styles.scrollContent}>
+          <ScrollView 
+            contentContainerStyle={styles.scrollContent}
+            showsVerticalScrollIndicator={false}
+            bounces={false}
+          >
             <View style={styles.header}>
-              <Text style={styles.title}>🎓 EduFun</Text>
-              <Text style={styles.subtitle}>Learning Made Fun & Easy!</Text>
+              <View style={styles.logoContainer}>
+                <View style={styles.logoCircle}>
+                  <Ionicons name="book" size={40} color="#FFFFFF" />
+                </View>
+                <Text style={styles.title}>EduFun</Text>
+              </View>
+              <Text style={styles.subtitle}>Your Gateway to Learning Excellence</Text>
             </View>
 
-            <View style={styles.formContainer}>
-              {/* Toggle Buttons */}
-              <View style={styles.toggleContainer}>
-                <TouchableOpacity
-                  style={[styles.toggleButton, isLogin && styles.activeToggle]}
-                  onPress={() => setIsLogin(true)}
-                >
-                  <Text style={[styles.toggleText, isLogin && styles.activeToggleText]}>
-                    🔑 Login
-                  </Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.toggleButton, !isLogin && styles.activeToggle]}
-                  onPress={() => setIsLogin(false)}
-                >
-                  <Text style={[styles.toggleText, !isLogin && styles.activeToggleText]}>
-                    ⭐ Sign Up
-                  </Text>
-                </TouchableOpacity>
-              </View>
+            <View style={styles.formWrapper}>
+              <View style={styles.formContainer}>
+                {/* Toggle Buttons */}
+                <View style={styles.toggleContainer}>
+                  <TouchableOpacity
+                    style={[styles.toggleButton, isLogin && styles.activeToggle]}
+                    onPress={() => setIsLogin(true)}
+                  >
+                    <Text style={[styles.toggleText, isLogin && styles.activeToggleText]}>
+                      Login
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.toggleButton, !isLogin && styles.activeToggle]}
+                    onPress={() => setIsLogin(false)}
+                  >
+                    <Text style={[styles.toggleText, !isLogin && styles.activeToggleText]}>
+                      Sign Up
+                    </Text>
+                  </TouchableOpacity>
+                </View>
 
-              <View style={styles.form}>
+                <View style={styles.form}>
                 <Text style={styles.formTitle}>
-                  {isLogin ? '👋 Welcome Back!' : '🌟 Join the Fun!'}
+                  {isLogin ? 'Welcome Back' : 'Create Your Account'}
+                </Text>
+                <Text style={styles.formSubtitle}>
+                  {isLogin ? 'Sign in to continue your learning journey' : 'Join us to start your learning adventure'}
                 </Text>
 
                 {!isLogin && (
@@ -227,17 +240,18 @@ const AuthScreen = ({ route }) => {
 
                 {isLogin && (
                   <TouchableOpacity style={styles.forgotPassword}>
-                    <Text style={styles.forgotPasswordText}>🤔 Forgot Password?</Text>
+                    <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
                   </TouchableOpacity>
                 )}
 
                 <TouchableOpacity
-                  style={styles.button}
+                  style={[styles.button, loading && styles.buttonDisabled]}
                   onPress={handleSubmit}
                   disabled={loading}
+                  activeOpacity={0.8}
                 >
                   <Text style={styles.buttonText}>
-                    {loading ? '⏳ Loading...' : (isLogin ? '🚀 Let\'s Go!' : '🎉 Create Account')}
+                    {loading ? 'Please wait...' : (isLogin ? 'Sign In' : 'Create Account')}
                   </Text>
                 </TouchableOpacity>
 
@@ -246,36 +260,23 @@ const AuthScreen = ({ route }) => {
                   onPress={toggleMode}
                 >
                   <Text style={styles.secondaryButtonText}>
-                    {isLogin ? '🌟 New here? Create an account' : '🔑 Already have an account? Sign In'}
+                    {isLogin ? 'New here? Create an account' : 'Already have an account? Sign In'}
                   </Text>
                 </TouchableOpacity>
-
-                {isLogin && (
-                  <TouchableOpacity
-                    style={styles.demoButton}
-                    onPress={fillDemoCredentials}
-                  >
-                    <Text style={styles.demoButtonText}>🎯 Try Demo Account</Text>
-                  </TouchableOpacity>
-                )}
-              </View>
-
-              <View style={styles.demoInfo}>
-                <Text style={styles.demoTitle}>Demo Accounts:</Text>
-                <Text style={styles.demoText}>Student: student@demo.com / demo123</Text>
-                <Text style={styles.demoText}>Admin: admin@demo.com / admin123</Text>
               </View>
             </View>
+            </View>
           </ScrollView>
-        </LinearGradient>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
+        </KeyboardAvoidingView>
+      </LinearGradient>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#000',
   },
   keyboardView: {
     flex: 1,
@@ -285,28 +286,46 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     flexGrow: 1,
-    justifyContent: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 20,
+    minHeight: '100%',
   },
   header: {
+    paddingTop: Platform.OS === 'ios' ? 60 : 40,
+    paddingBottom: 40,
+    paddingHorizontal: 24,
     alignItems: 'center',
-    marginBottom: 30,
+  },
+  logoContainer: {
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  logoCircle: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
+    borderWidth: 2,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
   },
   title: {
-    fontSize: 42,
+    fontSize: 36,
     fontWeight: 'bold',
     color: '#FFFFFF',
-    marginBottom: 10,
-    textShadowColor: 'rgba(0, 0, 0, 0.3)',
-    textShadowOffset: { width: 2, height: 2 },
-    textShadowRadius: 4,
+    letterSpacing: 1.5,
   },
   subtitle: {
-    fontSize: 18,
-    color: '#E0E7FF',
+    fontSize: 14,
+    color: 'rgba(255, 255, 255, 0.8)',
     textAlign: 'center',
-    fontWeight: '500',
+    letterSpacing: 0.5,
+    fontWeight: '400',
+  },
+  formWrapper: {
+    flex: 1,
+    paddingHorizontal: 24,
+    paddingBottom: Platform.OS === 'ios' ? 40 : 24,
   },
   formContainer: {
     flex: 1,
@@ -314,43 +333,42 @@ const styles = StyleSheet.create({
   },
   toggleContainer: {
     flexDirection: 'row',
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    borderRadius: 25,
-    padding: 4,
-    marginBottom: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    borderRadius: 30,
+    padding: 6,
+    marginBottom: 24,
   },
   toggleButton: {
     flex: 1,
-    paddingVertical: 12,
+    paddingVertical: 14,
     paddingHorizontal: 20,
-    borderRadius: 20,
+    borderRadius: 24,
     alignItems: 'center',
   },
   activeToggle: {
     backgroundColor: '#FFFFFF',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 5,
   },
   toggleText: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '600',
-    color: '#E0E7FF',
+    color: 'rgba(255, 255, 255, 0.7)',
   },
   activeToggleText: {
-    color: '#3B82F6',
+    color: '#4F46E5',
   },
   form: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 25,
-    padding: 25,
-    marginBottom: 20,
+    borderRadius: 24,
+    padding: 32,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
+    shadowOffset: { width: 0, height: 10 },
     shadowOpacity: 0.3,
-    shadowRadius: 12,
+    shadowRadius: 20,
     elevation: 10,
   },
   formTitle: {
@@ -358,100 +376,92 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#1F2937',
     textAlign: 'center',
-    marginBottom: 25,
+    marginBottom: 8,
+    letterSpacing: 0.3,
+  },
+  formSubtitle: {
+    fontSize: 14,
+    color: '#6B7280',
+    textAlign: 'center',
+    marginBottom: 32,
+    lineHeight: 20,
   },
   inputContainer: {
-    marginBottom: 16,
+    marginBottom: 20,
     flexDirection: 'row',
     alignItems: 'center',
     borderWidth: 2,
     borderColor: '#E5E7EB',
-    borderRadius: 15,
+    borderRadius: 14,
     backgroundColor: '#F9FAFB',
-    paddingHorizontal: 15,
+    paddingHorizontal: 16,
+    height: 56,
+    transition: 'all 0.3s ease',
+  },
+  inputContainerFocused: {
+    borderColor: '#4F46E5',
+    backgroundColor: '#FFFFFF',
+    shadowColor: '#4F46E5',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
   },
   inputIcon: {
-    marginRight: 10,
+    marginRight: 12,
+    color: '#9CA3AF',
   },
   input: {
     flex: 1,
-    padding: 15,
-    fontSize: 16,
+    fontSize: 15,
     color: '#1F2937',
-  },
-  eyeIcon: {
-    padding: 10,
-  },
-  forgotPassword: {
-    alignItems: 'center',
-    marginBottom: 15,
-  },
-  forgotPasswordText: {
-    color: '#3B82F6',
-    fontSize: 16,
     fontWeight: '500',
   },
+  eyeIcon: {
+    padding: 8,
+  },
+  forgotPassword: {
+    alignItems: 'flex-end',
+    marginBottom: 24,
+    marginTop: -8,
+  },
+  forgotPasswordText: {
+    color: '#4F46E5',
+    fontSize: 14,
+    fontWeight: '600',
+  },
   button: {
-    backgroundColor: '#3B82F6',
-    borderRadius: 15,
-    padding: 18,
+    backgroundColor: '#4F46E5',
+    borderRadius: 14,
+    height: 56,
     alignItems: 'center',
-    marginTop: 10,
-    shadowColor: '#3B82F6',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
+    justifyContent: 'center',
+    marginTop: 8,
+    shadowColor: '#4F46E5',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.4,
+    shadowRadius: 10,
     elevation: 6,
+  },
+  buttonDisabled: {
+    backgroundColor: '#9CA3AF',
+    shadowColor: '#9CA3AF',
   },
   buttonText: {
     color: '#FFFFFF',
-    fontSize: 18,
-    fontWeight: 'bold',
-  },
-  demoButton: {
-    backgroundColor: '#10B981',
-    borderRadius: 15,
-    padding: 15,
-    alignItems: 'center',
-    marginTop: 12,
-    shadowColor: '#10B981',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 6,
-  },
-  demoButtonText: {
-    color: '#FFFFFF',
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: '700',
+    letterSpacing: 0.5,
   },
   secondaryButton: {
-    paddingVertical: 12,
+    paddingVertical: 16,
     alignItems: 'center',
-    marginTop: 10,
+    marginTop: 16,
   },
   secondaryButtonText: {
-    color: '#3B82F6',
-    fontSize: 15,
-    fontWeight: '500',
-  },
-  demoInfo: {
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    borderRadius: 15,
-    padding: 18,
-    alignItems: 'center',
-  },
-  demoTitle: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: 'bold',
-    marginBottom: 8,
-  },
-  demoText: {
-    color: '#E0E7FF',
+    color: '#6B7280',
     fontSize: 14,
-    marginBottom: 3,
-    textAlign: 'center',
+    fontWeight: '600',
   },
 });
 
