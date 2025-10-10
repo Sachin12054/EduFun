@@ -9,88 +9,122 @@ import {
   Alert,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import api from '../services/api';
+import { Ionicons } from '@expo/vector-icons';
+import { useTheme } from '../contexts/ThemeContext';
+import { useUserProgress } from '../contexts/UserProgressContext';
+import { SUBJECTS_DATA } from '../data/subjectsData';
 
-const SubjectsScreen = () => {
-  const [subjects, setSubjects] = useState([]);
-  const [loading, setLoading] = useState(true);
+const SubjectsScreen = ({ navigation, route }) => {
+  const { theme } = useTheme();
+  const { userProgress } = useUserProgress();
+  const grade = route.params?.grade || 1; // Default to grade 1
 
-  useEffect(() => {
-    fetchSubjects();
-  }, []);
+  const subjects = Object.values(SUBJECTS_DATA).map(subject => ({
+    ...subject,
+    progress: calculateSubjectProgress(subject.id, grade),
+  }));
 
-  const fetchSubjects = async () => {
-    try {
-      const response = await api.get('/subjects');
-      setSubjects(response.data || []);
-    } catch (error) {
-      console.error('Error fetching subjects:', error);
-      Alert.alert('Error', 'Failed to load subjects');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const getGradientColors = (colorGradient) => {
-    const gradientMap = {
-      'from-blue-400 to-blue-600': ['#60A5FA', '#2563EB'],
-      'from-green-400 to-green-600': ['#4ADE80', '#16A34A'],
-      'from-purple-400 to-purple-600': ['#A78BFA', '#7C3AED'],
-      'from-pink-400 to-pink-600': ['#F472B6', '#DB2777'],
-      'from-yellow-400 to-yellow-600': ['#FBBF24', '#D97706'],
+  function calculateSubjectProgress(subjectId, grade) {
+    const subjectData = SUBJECTS_DATA[subjectId];
+    const gradeData = subjectData?.grades?.[grade];
+    
+    if (!gradeData) return { completed: 0, total: 0, percentage: 0 };
+    
+    const totalLessons = gradeData.lessons?.length || 0;
+    const completedLessons = userProgress.completedLessons?.filter(
+      lesson => lesson.startsWith(`${subjectId}_grade${grade}`)
+    ).length || 0;
+    
+    return {
+      completed: completedLessons,
+      total: totalLessons,
+      percentage: totalLessons > 0 ? Math.round((completedLessons / totalLessons) * 100) : 0
     };
-    return gradientMap[colorGradient] || ['#60A5FA', '#2563EB'];
-  };
-
-  const getSubjectIcon = (icon) => {
-    const iconMap = {
-      'Calculator': '📊',
-      'BookOpen': '📚',
-      'Globe': '🔬',
-      'Palette': '🎨',
-    };
-    return iconMap[icon] || '📖';
-  };
-
-  const SubjectCard = ({ subject }) => (
-    <TouchableOpacity 
-      style={styles.subjectCard}
-      onPress={() => Alert.alert(subject.name, `Opening ${subject.name} activities...`)}
-    >
-      <LinearGradient
-        colors={getGradientColors(subject.color_gradient)}
-        style={styles.subjectGradient}
-      >
-        <View style={styles.subjectContent}>
-          <Text style={styles.subjectIcon}>{getSubjectIcon(subject.icon)}</Text>
-          <Text style={styles.subjectName}>{subject.name}</Text>
-          <Text style={styles.subjectDescription}>{subject.description}</Text>
-          <View style={styles.subjectMeta}>
-            <Text style={styles.subjectClass}>Class {subject.class_level}</Text>
-            {subject.state && (
-              <Text style={styles.subjectState}>{subject.state}</Text>
-            )}
-          </View>
-        </View>
-      </LinearGradient>
-    </TouchableOpacity>
-  );
-
-  if (loading) {
-    return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.loadingContainer}>
-          <Text style={styles.loadingText}>Loading subjects...</Text>
-        </View>
-      </SafeAreaView>
-    );
   }
 
+  const handleSubjectPress = (subject) => {
+    navigation.navigate('Subject', {
+      subjectId: subject.id,
+      subject: subject,
+      grade: grade,
+    });
+  };
+
+  const SubjectCard = ({ subject }) => {
+    const progress = subject.progress;
+    
+    return (
+      <TouchableOpacity 
+        style={[styles.subjectCard, { backgroundColor: theme.surface }]}
+        onPress={() => handleSubjectPress(subject)}
+      >
+        <LinearGradient
+          colors={[subject.color, subject.color + 'DD']}
+          style={styles.subjectGradient}
+        >
+          <View style={styles.subjectHeader}>
+            <Text style={styles.subjectIcon}>{subject.icon === 'book' ? '📚' : 
+                                               subject.icon === 'calculator' ? '🔢' : 
+                                               subject.icon === 'flask' ? '🔬' : 
+                                               subject.icon === 'people' ? '🌍' : 
+                                               subject.icon === 'bulb' ? '💡' : '📖'}</Text>
+            {progress.completed > 0 && (
+              <View style={styles.completionBadge}>
+                <Ionicons name="checkmark-circle" size={20} color="#4CAF50" />
+              </View>
+            )}
+          </View>
+          
+          <View style={styles.subjectContent}>
+            <Text style={styles.subjectName}>{subject.name}</Text>
+            <Text style={styles.subjectDescription}>{subject.description}</Text>
+            
+            <View style={styles.progressContainer}>
+              <View style={styles.progressInfo}>
+                <Text style={styles.progressText}>
+                  {progress.completed}/{progress.total} lessons
+                </Text>
+                <Text style={styles.progressPercentage}>{progress.percentage}%</Text>
+              </View>
+              <View style={styles.progressBarContainer}>
+                <View 
+                  style={[
+                    styles.progressBar,
+                    { width: `${progress.percentage}%`, backgroundColor: '#4CAF50' }
+                  ]}
+                />
+              </View>
+            </View>
+          </View>
+        </LinearGradient>
+      </TouchableOpacity>
+    );
+  };
+
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Subjects</Text>
-        <Text style={styles.headerSubtitle}>Choose a subject to start learning</Text>
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
+      <View style={[styles.header, { backgroundColor: theme.surface }]}>
+        <View style={styles.headerContent}>
+          <Text style={[styles.headerTitle, { color: theme.text }]}>My Subjects 📚</Text>
+          <Text style={[styles.headerSubtitle, { color: theme.textSecondary }]}>
+            Grade {grade} • Choose a subject to learn
+          </Text>
+        </View>
+        
+        <View style={styles.statsContainer}>
+          <View style={styles.statItem}>
+            <Text style={styles.statEmoji}>🪙</Text>
+            <Text style={[styles.statText, { color: theme.text }]}>
+              {userProgress.coins || 0}
+            </Text>
+          </View>
+          <View style={styles.statItem}>
+            <Text style={styles.statEmoji}>⭐</Text>
+            <Text style={[styles.statText, { color: theme.text }]}>
+              {userProgress.totalPoints || 0}
+            </Text>
+          </View>
+        </View>
       </View>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
@@ -99,13 +133,6 @@ const SubjectsScreen = () => {
             <SubjectCard key={subject.id} subject={subject} />
           ))}
         </View>
-
-        {subjects.length === 0 && (
-          <View style={styles.emptyState}>
-            <Text style={styles.emptyStateText}>📚 No subjects available</Text>
-            <Text style={styles.emptyStateSubtext}>Check back later for new subjects!</Text>
-          </View>
-        )}
       </ScrollView>
     </SafeAreaView>
   );
@@ -114,115 +141,126 @@ const SubjectsScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F3F4F6',
   },
   header: {
-    backgroundColor: '#FFFFFF',
     paddingHorizontal: 20,
     paddingTop: 20,
-    paddingBottom: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
+    paddingBottom: 15,
+  },
+  headerContent: {
+    marginBottom: 15,
   },
   headerTitle: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: '#1F2937',
     marginBottom: 5,
   },
   headerSubtitle: {
     fontSize: 16,
-    color: '#6B7280',
+  },
+  statsContainer: {
+    flexDirection: 'row',
+    gap: 20,
+  },
+  statItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    paddingHorizontal: 15,
+    paddingVertical: 8,
+    borderRadius: 20,
+  },
+  statEmoji: {
+    fontSize: 20,
+    marginRight: 8,
+  },
+  statText: {
+    fontSize: 18,
+    fontWeight: '600',
   },
   content: {
     flex: 1,
     paddingHorizontal: 20,
-    paddingTop: 20,
+    paddingTop: 10,
   },
   subjectsContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-between',
+    paddingBottom: 20,
   },
   subjectCard: {
     width: '48%',
     marginBottom: 15,
-    borderRadius: 15,
+    borderRadius: 16,
     overflow: 'hidden',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 6,
-    elevation: 4,
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 5,
   },
   subjectGradient: {
-    padding: 20,
-    minHeight: 160,
+    padding: 16,
+    minHeight: 180,
+  },
+  subjectHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 10,
+  },
+  subjectIcon: {
+    fontSize: 36,
+  },
+  completionBadge: {
+    backgroundColor: 'white',
+    borderRadius: 15,
+    padding: 2,
   },
   subjectContent: {
     flex: 1,
     justifyContent: 'space-between',
   },
-  subjectIcon: {
-    fontSize: 32,
-    marginBottom: 10,
-  },
   subjectName: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: 'bold',
     color: '#FFFFFF',
-    marginBottom: 8,
+    marginBottom: 6,
   },
   subjectDescription: {
-    fontSize: 14,
-    color: '#F3F4F6',
+    fontSize: 13,
+    color: 'rgba(255, 255, 255, 0.9)',
     lineHeight: 18,
-    marginBottom: 15,
+    marginBottom: 12,
   },
-  subjectMeta: {
+  progressContainer: {
+    marginTop: 'auto',
+  },
+  progressInfo: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    marginBottom: 6,
   },
-  subjectClass: {
-    fontSize: 12,
-    color: '#FFFFFF',
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
+  progressText: {
+    fontSize: 11,
+    color: 'rgba(255, 255, 255, 0.9)',
     fontWeight: '600',
   },
-  subjectState: {
-    fontSize: 12,
-    color: '#FFFFFF',
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-    fontWeight: '600',
+  progressPercentage: {
+    fontSize: 11,
+    color: 'rgba(255, 255, 255, 0.9)',
+    fontWeight: '700',
   },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+  progressBarContainer: {
+    height: 6,
+    backgroundColor: 'rgba(255, 255, 255, 0.3)',
+    borderRadius: 3,
+    overflow: 'hidden',
   },
-  loadingText: {
-    fontSize: 16,
-    color: '#6B7280',
-  },
-  emptyState: {
-    alignItems: 'center',
-    paddingVertical: 50,
-  },
-  emptyStateText: {
-    fontSize: 18,
-    color: '#6B7280',
-    marginBottom: 5,
-  },
-  emptyStateSubtext: {
-    fontSize: 14,
-    color: '#9CA3AF',
+  progressBar: {
+    height: 6,
+    borderRadius: 3,
   },
 });
 

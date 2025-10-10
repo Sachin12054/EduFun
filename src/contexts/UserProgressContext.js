@@ -1,7 +1,19 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { doc, setDoc, getDoc, updateDoc, onSnapshot } from 'firebase/firestore';
-import { db } from '../config/firebase';
 import { useAuth } from './AuthContext';
+import {
+  getStudentProgress,
+  getStudentProfile,
+  markLessonComplete,
+  saveQuizResult,
+  addCoins as dbAddCoins,
+  awardBadge as dbAwardBadge,
+  awardSticker as dbAwardSticker,
+  subscribeToStudentProgress,
+  subscribeToStudentProfile,
+  updateLeaderboard,
+  initializeStudentProgress,
+  createStudentProfile
+} from '../services/database';
 
 const UserProgressContext = createContext();
 
@@ -15,177 +27,253 @@ export const useUserProgress = () => {
 
 export const UserProgressProvider = ({ children }) => {
   const { user } = useAuth();
+  
+  // Student Profile State
+  const [studentProfile, setStudentProfile] = useState(null);
+  
+  // Student Progress State  
   const [userProgress, setUserProgress] = useState({
     totalPoints: 0,
+    totalCoins: 0,
+    coins: 0, // Alias for compatibility
+    level: 1,
     completedLessons: [],
     completedQuizzes: [],
+    quizResults: {},
     currentStreak: 0,
     achievements: [],
-    subjectProgress: {},
+    badges: [],
+    stickers: [],
+    subjectProgress: {
+      english: { lessonsCompleted: 0, quizzesCompleted: 0, points: 0 },
+      maths: { lessonsCompleted: 0, quizzesCompleted: 0, points: 0 },
+      science: { lessonsCompleted: 0, quizzesCompleted: 0, points: 0 },
+      social: { lessonsCompleted: 0, quizzesCompleted: 0, points: 0 },
+      gk: { lessonsCompleted: 0, quizzesCompleted: 0, points: 0 },
+    },
     lastActiveDate: null,
   });
+  
   const [isLoading, setIsLoading] = useState(true);
 
+  // Load student data when user logs in
   useEffect(() => {
-    if (user) {
-      loadUserProgress();
+    if (user?.uid) {
+      loadStudentData();
+      
+      // Subscribe to real-time updates
+      const unsubscribeProgress = subscribeToStudentProgress(user.uid, handleProgressUpdate);
+      const unsubscribeProfile = subscribeToStudentProfile(user.uid, handleProfileUpdate);
+
+      return () => {
+        unsubscribeProgress();
+        unsubscribeProfile();
+      };
+    } else {
+      setIsLoading(false);
     }
   }, [user]);
 
-  const loadUserProgress = async () => {
-    if (!user) return;
+  const loadStudentData = async () => {
+    if (!user?.uid) return;
 
     try {
-      const progressRef = doc(db, 'userProgress', user.uid);
+      setIsLoading(true);
       
-      // Set up real-time listener
-      const unsubscribe = onSnapshot(progressRef, (doc) => {
-        if (doc.exists()) {
-          setUserProgress(doc.data());
-        } else {
-          initializeUserProgress();
-        }
-        setIsLoading(false);
+      // Load profile
+      let profile = await getStudentProfile(user.uid);
+      if (!profile) {
+        // Create profile if doesn't exist
+        profile = await createStudentProfile(user.uid, {
+          name: user.displayName || 'Student',
+          email: user.email || '',
+          grade: 1,
+          avatar: '👦'
+        });
+      }
+      setStudentProfile(profile);
+
+      // Load progress
+      let progress = await getStudentProgress(user.uid);
+      if (!progress) {
+        // Initialize progress if doesn't exist
+        progress = await initializeStudentProgress(user.uid);
+      }
+      
+      setUserProgress({
+        ...progress,
+        coins: progress.totalCoins || 0,
+        completedQuizzes: progress.completedQuizzes || []
       });
 
-      return unsubscribe;
     } catch (error) {
-      console.error('Error loading user progress:', error);
+      console.error('❌ Error loading student data:', error);
+    } finally {
       setIsLoading(false);
     }
   };
 
+  const handleProgressUpdate = (updatedProgress) => {
+    setUserProgress({
+      ...updatedProgress,
+      coins: updatedProgress.totalCoins || 0,
+      completedQuizzes: updatedProgress.completedQuizzes || []
+    });
+
+    // Update leaderboard when progress changes
+    if (studentProfile && user?.uid) {
+      updateLeaderboard(user.uid, {
+        name: studentProfile.name,
+        avatar: studentProfile.avatar,
+        grade: studentProfile.grade,
+        totalPoints: updatedProgress.totalPoints,
+        totalCoins: updatedProgress.totalCoins,
+        badges: updatedProgress.badges
+      });
+    }
+  };
+
+  const handleProfileUpdate = (updatedProfile) => {
+    setStudentProfile(updatedProfile);
+  };
+
   const initializeUserProgress = async () => {
-    if (!user) return;
-
-    const initialProgress = {
-      totalPoints: 0,
-      completedLessons: [],
-      completedQuizzes: [],
-      currentStreak: 0,
-      achievements: [],
-      subjectProgress: {
-        mathematics: { lessons: 0, quizzes: 0, points: 0 },
-        science: { lessons: 0, quizzes: 0, points: 0 },
-        english: { lessons: 0, quizzes: 0, points: 0 },
-        history: { lessons: 0, quizzes: 0, points: 0 },
-        geography: { lessons: 0, quizzes: 0, points: 0 },
-        computer: { lessons: 0, quizzes: 0, points: 0 },
-      },
-      lastActiveDate: new Date().toISOString(),
-      createdAt: new Date().toISOString(),
-    };
-
+    if (!user?.uid) return;
+    
     try {
-      const progressRef = doc(db, 'userProgress', user.uid);
-      await setDoc(progressRef, initialProgress);
-      setUserProgress(initialProgress);
+      await initializeStudentProgress(user.uid);
     } catch (error) {
-      console.error('Error initializing user progress:', error);
+      console.error('❌ Error initializing progress:', error);
     }
   };
 
   const updateProgress = async (updates) => {
-    if (!user) return;
+    // This method is kept for backwards compatibility
+    // Direct updates should use specific methods below
+    setUserProgress(prev => ({
+      ...prev,
+      ...updates
+    }));
+  };
+
+  const completeLesson = async (subject, lessonId, points = 10, grade = 1, lessonTitle = '') => {
+    if (!user?.uid) return;
 
     try {
-      const progressRef = doc(db, 'userProgress', user.uid);
-      const updatedProgress = {
-        ...userProgress,
-        ...updates,
-        lastActiveDate: new Date().toISOString(),
-      };
-      
-      await updateDoc(progressRef, updatedProgress);
-      setUserProgress(updatedProgress);
-    } catch (error) {
-      console.error('Error updating progress:', error);
-    }
-  };
-
-  const completeLesson = async (subject, lessonId, points = 10) => {
-    const newCompletedLessons = [...userProgress.completedLessons];
-    if (!newCompletedLessons.includes(lessonId)) {
-      newCompletedLessons.push(lessonId);
-    }
-
-    const newSubjectProgress = {
-      ...userProgress.subjectProgress,
-      [subject]: {
-        ...userProgress.subjectProgress[subject],
-        lessons: userProgress.subjectProgress[subject].lessons + 1,
-        points: userProgress.subjectProgress[subject].points + points,
-      },
-    };
-
-    await updateProgress({
-      completedLessons: newCompletedLessons,
-      totalPoints: userProgress.totalPoints + points,
-      subjectProgress: newSubjectProgress,
-    });
-  };
-
-  const completeQuiz = async (subject, quizId, score, maxScore) => {
-    const points = Math.round((score / maxScore) * 20); // Max 20 points per quiz
-
-    const newCompletedQuizzes = [...userProgress.completedQuizzes];
-    const existingQuizIndex = newCompletedQuizzes.findIndex(q => q.id === quizId);
-    
-    if (existingQuizIndex >= 0) {
-      newCompletedQuizzes[existingQuizIndex] = {
-        id: quizId,
-        score,
-        maxScore,
-        points,
-        completedAt: new Date().toISOString(),
-      };
-    } else {
-      newCompletedQuizzes.push({
-        id: quizId,
-        score,
-        maxScore,
-        points,
-        completedAt: new Date().toISOString(),
+      await markLessonComplete(user.uid, {
+        subject,
+        grade,
+        lessonId,
+        lessonTitle,
+        points
       });
+
+      console.log(`✅ Lesson completed: ${lessonTitle}`);
+    } catch (error) {
+      console.error('❌ Error completing lesson:', error);
     }
+  };
 
-    const newSubjectProgress = {
-      ...userProgress.subjectProgress,
-      [subject]: {
-        ...userProgress.subjectProgress[subject],
-        quizzes: userProgress.subjectProgress[subject].quizzes + 1,
-        points: userProgress.subjectProgress[subject].points + points,
-      },
-    };
+  const completeQuiz = async (subject, quizId, score, maxScore, grade = 1, quizTitle = '') => {
+    if (!user?.uid) return;
 
-    await updateProgress({
-      completedQuizzes: newCompletedQuizzes,
-      totalPoints: userProgress.totalPoints + points,
-      subjectProgress: newSubjectProgress,
-    });
+    try {
+      const correctAnswers = score;
+      const totalQuestions = maxScore;
+      const percentage = Math.round((score / maxScore) * 100);
+      
+      // Calculate points and coins based on performance
+      let pointsEarned = Math.round((score / maxScore) * 20); // Base: 0-20 points
+      let coinsEarned = Math.round((score / maxScore) * 10); // Base: 0-10 coins
+      
+      // Bonus for perfect score
+      if (score === maxScore) {
+        pointsEarned += 10; // Bonus 10 points
+        coinsEarned += 5;   // Bonus 5 coins
+      }
+
+      await saveQuizResult(user.uid, {
+        subject,
+        grade,
+        quizId,
+        quizTitle,
+        score: percentage,
+        correctAnswers,
+        totalQuestions,
+        pointsEarned,
+        coinsEarned
+      });
+
+      console.log(`✅ Quiz completed: ${quizTitle} - Score: ${percentage}%`);
+      
+      return { pointsEarned, coinsEarned, percentage };
+    } catch (error) {
+      console.error('❌ Error completing quiz:', error);
+      return { pointsEarned: 0, coinsEarned: 0, percentage: 0 };
+    }
+  };
+
+  const addCoins = async (amount, reason = 'Reward') => {
+    if (!user?.uid) return;
+
+    try {
+      await dbAddCoins(user.uid, amount, reason);
+      console.log(`✅ Added ${amount} coins`);
+    } catch (error) {
+      console.error('❌ Error adding coins:', error);
+    }
+  };
+
+  const addSticker = async (stickerData) => {
+    if (!user?.uid) return;
+
+    try {
+      await dbAwardSticker(user.uid, stickerData);
+      console.log(`✅ Sticker awarded: ${stickerData.name}`);
+    } catch (error) {
+      console.error('❌ Error adding sticker:', error);
+    }
+  };
+
+  const addBadge = async (badgeData) => {
+    if (!user?.uid) return;
+
+    try {
+      await dbAwardBadge(user.uid, badgeData);
+      console.log(`✅ Badge awarded: ${badgeData.name}`);
+    } catch (error) {
+      console.error('❌ Error adding badge:', error);
+    }
   };
 
   const addAchievement = async (achievement) => {
-    const newAchievements = [...userProgress.achievements];
+    if (!user?.uid) return;
+
+    const newAchievements = [...(userProgress.achievements || [])];
     if (!newAchievements.find(a => a.id === achievement.id)) {
       newAchievements.push({
         ...achievement,
         unlockedAt: new Date().toISOString(),
       });
       
-      await updateProgress({
-        achievements: newAchievements,
-      });
+      setUserProgress(prev => ({
+        ...prev,
+        achievements: newAchievements
+      }));
     }
   };
 
   const value = {
     userProgress,
+    studentProfile,
     isLoading,
     updateProgress,
     completeLesson,
     completeQuiz,
     addAchievement,
+    addCoins,
+    addSticker,
+    addBadge,
   };
 
   return (

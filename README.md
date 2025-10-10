@@ -1,15 +1,52 @@
-# EduFun Mobile App 📚📱
+# EduFun Mobile App 📚📱🎓
 
-A cross-platform educational mobile application built with React Native and Expo, designed to provide an engaging learning experience with Firebase integration.
+A comprehensive educational platform for kids in Grades 1-5, built with React Native, Expo, and Firebase. Features interactive lessons, engaging quizzes, gamification with coins, badges, and stickers, plus a complete hierarchical database structure.
 
 ## 🚀 Features
 
-- **User Authentication**: Secure login and registration system
-- **Educational Content**: Access to various subjects and learning materials
-- **Admin Panel**: Administrative interface for content management
-- **User Profiles**: Personalized user experience
-- **Cross-Platform**: Works on iOS, Android, and Web
-- **Firebase Integration**: Real-time database and authentication
+### 🎓 **Educational Content**
+- **5 Subjects**: English, Maths, Science, Social Studies, General Knowledge
+- **5 Grade Levels**: Content for Grades 1-5
+- **60+ Lessons**: Comprehensive, age-appropriate lessons with emojis
+- **13+ Quizzes**: Interactive quizzes with instant feedback
+- **88+ Questions**: Original, carefully crafted questions
+
+### 🎮 **Gamification**
+- **Coins System**: Earn coins for completing lessons and quizzes
+- **Points & Levels**: Track learning progress with XP points
+- **Badges**: Unlock achievement badges
+- **Stickers**: Collect fun stickers (10% chance on lesson completion, guaranteed on perfect quiz scores)
+- **Confetti Animations**: Celebrate success with visual effects
+- **Encouraging Messages**: Positive reinforcement for every achievement
+
+### 🔥 **Firebase Integration**
+- **Real-time Database**: Instant synchronization across devices
+- **Hierarchical Structure**: `Students → StudentID → Profile/Progress/History`
+- **Secure Authentication**: Email/Password login
+- **Activity Logging**: Complete learning history tracking
+- **Leaderboard**: Grade-wise competitive rankings
+- **Cloud Storage**: All progress saved securely
+
+### 👤 **User Experience**
+- **Personalized Profiles**: Student details, grade, avatar
+- **Progress Tracking**: Subject-wise completion percentages
+- **Learning History**: View all past activities
+- **Coin Transactions**: Track all earnings
+- **Responsive Design**: Works on iOS, Android, and Web
+- **Offline Support**: Firebase offline persistence
+
+## 📊 Database Structure
+
+```
+Students → {studentId} → Profile (Student Details)
+                      → Progress (Learning Progress)  
+                      → LearningHistory (Activity Logs)
+                      → CoinTransactions (Coin History)
+
+Leaderboard → {grade1-5} → Students → Rankings
+```
+
+See **[DATABASE_STRUCTURE.md](DATABASE_STRUCTURE.md)** for complete details.
 
 ## 📋 Prerequisites
 
@@ -19,6 +56,7 @@ Before running this project, make sure you have the following installed:
 - **npm** or **yarn** package manager
 - **Expo CLI** (for development)
 - **Git** - [Download here](https://git-scm.com/)
+- **Firebase Account** - [Create here](https://console.firebase.google.com/)
 
 ### For Mobile Development:
 - **Expo Go** app on your mobile device ([iOS](https://apps.apple.com/app/expo-go/id982107779) | [Android](https://play.google.com/store/apps/details?id=host.exp.exponent))
@@ -48,7 +86,8 @@ npm install -g @expo/cli
 
 ### 4. Configure Firebase
 1. Create a Firebase project at [Firebase Console](https://console.firebase.google.com/)
-2. Enable Authentication and Firestore Database
+2. Enable **Authentication** (Email/Password provider)
+3. Enable **Firestore Database**
 3. Update the Firebase configuration in `src/config/firebase.js` with your project credentials
 
 ## 🏃‍♂️ Running the Application
