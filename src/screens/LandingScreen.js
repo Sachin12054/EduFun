@@ -7,6 +7,7 @@ import {
   Dimensions,
   ScrollView,
   StatusBar,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -54,12 +55,13 @@ const LandingScreen = ({ navigation }) => {
           {/* Hero Section */}
           <View style={styles.heroSection}>
             <View style={styles.logoContainer}>
-              <LinearGradient
-                colors={['#667eea', '#764ba2']}
-                style={styles.logoGradient}
-              >
-                <Ionicons name="school" size={60} color="white" />
-              </LinearGradient>
+              <View style={styles.logoBackground}>
+                <Image
+                  source={require('../../assets/Logo/Logo.jpg')}
+                  style={styles.logoImage}
+                  resizeMode="contain"
+                />
+              </View>
             </View>
             
             <Text style={styles.title}>EduFun</Text>
@@ -223,11 +225,13 @@ const styles = StyleSheet.create({
   },
   logoContainer: {
     marginBottom: 24,
+    alignItems: 'center',
   },
-  logoGradient: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
+  logoBackground: {
+    width: 140,
+    height: 140,
+    borderRadius: 70,
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
     justifyContent: 'center',
     alignItems: 'center',
     shadowColor: '#667eea',
@@ -235,6 +239,14 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.4,
     shadowRadius: 16,
     elevation: 10,
+    padding: 15,
+    borderWidth: 3,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
+  },
+  logoImage: {
+    width: 110,
+    height: 110,
+    borderRadius: 55,
   },
   title: {
     fontSize: 56,

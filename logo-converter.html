@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EduFun Logo Converter</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            min-height: 100vh;
+        }
+        .container {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 30px;
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+            color: #fff;
+        }
+        .upload-area {
+            border: 3px dashed rgba(255, 255, 255, 0.5);
+            border-radius: 10px;
+            padding: 40px;
+            text-align: center;
+            margin: 20px 0;
+            transition: all 0.3s ease;
+        }
+        .upload-area:hover {
+            border-color: white;
+            background: rgba(255, 255, 255, 0.05);
+        }
+        input[type="file"] {
+            margin: 10px 0;
+            padding: 10px;
+            border: none;
+            border-radius: 5px;
+            background: white;
+            color: #333;
+        }
+        .preview {
+            text-align: center;
+            margin: 20px 0;
+        }
+        .preview img {
+            max-width: 200px;
+            max-height: 200px;
+            border: 3px solid white;
+            border-radius: 15px;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+        }
+        .download-section {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+        .size-option {
+            margin: 10px 0;
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        button {
+            background: linear-gradient(45deg, #4CAF50, #45a049);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s ease;
+        }
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+        }
+        button:disabled {
+            background: #666;
+            cursor: not-allowed;
+            transform: none;
+        }
+        .instructions {
+            background: rgba(76, 175, 80, 0.2);
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+            border-left: 4px solid #4CAF50;
+        }
+        .step {
+            margin: 10px 0;
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 5px;
+        }
+        canvas {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎯 EduFun Logo to App Icons Converter</h1>
+        
+        <div class="upload-area">
+            <h3>📁 Upload Your Logo</h3>
+            <p>Select your Logo.jpg file from assets/Logo/ folder</p>
+            <input type="file" id="logoInput" accept="image/*">
+        </div>
+
+        <div class="preview" id="previewSection" style="display: none;">
+            <h3>📱 Preview</h3>
+            <img id="previewImage" alt="Logo preview">
+        </div>
+
+        <div class="download-section" id="downloadSection" style="display: none;">
+            <h3>💾 Download App Icons</h3>
+            <p>Click the buttons below to download each required icon size:</p>
+            
+            <div class="size-option">
+                <div>
+                    <strong>📱 icon.png</strong><br>
+                    <small>1024×1024 - Main app icon</small>
+                </div>
+                <button onclick="downloadIcon('icon', 1024)">Download</button>
+            </div>
+            
+            <div class="size-option">
+                <div>
+                    <strong>🤖 adaptive-icon.png</strong><br>
+                    <small>1024×1024 - Android adaptive icon</small>
+                </div>
+                <button onclick="downloadIcon('adaptive-icon', 1024)">Download</button>
+            </div>
+            
+            <div class="size-option">
+                <div>
+                    <strong>🎨 splash-icon.png</strong><br>
+                    <small>1024×1024 - Splash screen icon</small>
+                </div>
+                <button onclick="downloadIcon('splash-icon', 1024)">Download</button>
+            </div>
+            
+            <div class="size-option">
+                <div>
+                    <strong>🌐 favicon.png</strong><br>
+                    <small>48×48 - Web favicon</small>
+                </div>
+                <button onclick="downloadIcon('favicon', 48)">Download</button>
+            </div>
+        </div>
+
+        <div class="instructions">
+            <h3>📋 Instructions</h3>
+            <div class="step">
+                <strong>Step 1:</strong> Upload your Logo.jpg file using the upload button above
+            </div>
+            <div class="step">
+                <strong>Step 2:</strong> Download all 4 icon files by clicking the download buttons
+            </div>
+            <div class="step">
+                <strong>Step 3:</strong> Replace the files in your assets/ folder:
+                <ul>
+                    <li>Replace assets/icon.png</li>
+                    <li>Replace assets/adaptive-icon.png</li>
+                    <li>Replace assets/splash-icon.png</li>
+                    <li>Replace assets/favicon.png</li>
+                </ul>
+            </div>
+            <div class="step">
+                <strong>Step 4:</strong> Stop your Expo server (Ctrl+C) and restart with: <code>expo start --clear</code>
+            </div>
+        </div>
+    </div>
+
+    <canvas id="canvas"></canvas>
+
+    <script>
+        let originalImage = null;
+
+        document.getElementById('logoInput').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const img = new Image();
+                    img.onload = function() {
+                        originalImage = img;
+                        document.getElementById('previewImage').src = e.target.result;
+                        document.getElementById('previewSection').style.display = 'block';
+                        document.getElementById('downloadSection').style.display = 'block';
+                    };
+                    img.src = e.target.result;
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        function downloadIcon(name, size) {
+            if (!originalImage) return;
+
+            const canvas = document.getElementById('canvas');
+            const ctx = canvas.getContext('2d');
+            
+            canvas.width = size;
+            canvas.height = size;
+            
+            // Clear canvas with transparent background
+            ctx.clearRect(0, 0, size, size);
+            
+            // Calculate dimensions to maintain aspect ratio
+            const scale = Math.min(size / originalImage.width, size / originalImage.height);
+            const scaledWidth = originalImage.width * scale;
+            const scaledHeight = originalImage.height * scale;
+            const x = (size - scaledWidth) / 2;
+            const y = (size - scaledHeight) / 2;
+            
+            // Draw image
+            ctx.drawImage(originalImage, x, y, scaledWidth, scaledHeight);
+            
+            // Download
+            canvas.toBlob(function(blob) {
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = name + '.png';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            }, 'image/png');
+        }
+    </script>
+</body>
+</html>
