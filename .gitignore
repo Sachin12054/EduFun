@@ -39,3 +39,8 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+
+# Credentials
+credentials.json
+credentials/
+@kishore_sachin__edufun-mobile.jks

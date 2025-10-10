@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "EduFun Mobile",
+    "name": "edufun-mobile",
     "slug": "edufun-mobile",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -13,32 +13,19 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": true,
-      "bundleIdentifier": "com.edufun.mobile"
+      "supportsTablet": true
     },
     "android": {
-      "package": "com.edufun.mobile",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
       "softwareKeyboardLayoutMode": "pan",
-      "edgeToEdgeEnabled": true,
-      "permissions": [
-        "INTERNET",
-        "CAMERA",
-        "RECORD_AUDIO",
-        "READ_EXTERNAL_STORAGE",
-        "WRITE_EXTERNAL_STORAGE"
-      ]
+      "edgeToEdgeEnabled": true
     },
     "web": {
       "favicon": "./assets/favicon.png"
     },
-    "plugins": [
-      "expo-font",
-      "expo-av"
-    ],
     "extra": {
       "eas": {
         "projectId": "4a3b13c2-6843-40b7-95c4-59552570cccc"
