@@ -36,7 +36,6 @@ const AuthScreen = ({ route }) => {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   // Create refs for all input fields
-  const scrollViewRef = useRef(null);
   const firstNameRef = useRef(null);
   const lastNameRef = useRef(null);
   const classNameRef = useRef(null);
@@ -56,6 +55,7 @@ const AuthScreen = ({ route }) => {
   };
 
   const handleBlur = () => {
+    // Delay blur to prevent conflicts
     setTimeout(() => {
       setFocusedInput(null);
     }, 100);
@@ -133,7 +133,7 @@ const AuthScreen = ({ route }) => {
   };
 
   const toggleMode = () => {
-    Keyboard.dismiss();
+    Keyboard.dismiss(); // Dismiss keyboard before toggling
     setIsLogin(!isLogin);
     resetForm();
     setShowPassword(false);
@@ -142,6 +142,7 @@ const AuthScreen = ({ route }) => {
   };
 
   const renderInput = (field, placeholder, icon, options = {}) => {
+    // Get the appropriate ref for this field
     let inputRef = null;
     switch(field) {
       case 'firstName': inputRef = firstNameRef; break;
@@ -160,7 +161,7 @@ const AuthScreen = ({ route }) => {
         styles.inputContainer,
         focusedInput === field && styles.inputContainerFocused
       ]}>
-        <Ionicons name={icon} size={20} color={focusedInput === field ? '#4F46E5' : '#9CA3AF'} style={styles.inputIcon} />
+        <Ionicons name={icon} size={22} color={focusedInput === field ? '#4F46E5' : '#9CA3AF'} style={styles.inputIcon} />
         <TextInput
           ref={inputRef}
           style={styles.input}
@@ -178,6 +179,12 @@ const AuthScreen = ({ route }) => {
           onSubmitEditing={options.onSubmitEditing}
           blurOnSubmit={false}
           editable={!loading}
+          textContentType={options.textContentType || 'none'}
+          autoComplete={options.autoComplete || 'off'}
+          importantForAutofill="no"
+          caretHidden={false}
+          autoFocus={false}
+          selectTextOnFocus={false}
         />
         {options.togglePassword && (
           <TouchableOpacity
@@ -186,7 +193,7 @@ const AuthScreen = ({ route }) => {
           >
             <Ionicons
               name={options.showPassword ? 'eye-off' : 'eye'}
-              size={20}
+              size={22}
               color="#9CA3AF"
             />
           </TouchableOpacity>
@@ -196,38 +203,48 @@ const AuthScreen = ({ route }) => {
   };
 
   return (
-    <View style={styles.container}>
+    <KeyboardAvoidingView 
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      style={styles.container}
+      keyboardVerticalOffset={0}
+    >
       <StatusBar barStyle="light-content" backgroundColor="#4F46E5" />
-      <KeyboardAvoidingView 
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={{ flex: 1 }}
+      <LinearGradient
+        colors={['#4F46E5', '#7C3AED']}
+        style={styles.gradient}
       >
-        <LinearGradient
-          colors={['#4F46E5', '#7C3AED']}
-          style={styles.gradient}
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          contentContainerStyle={styles.scrollContent}
+          bounces={false}
+          overScrollMode="never"
         >
-          <ScrollView
-            ref={scrollViewRef}
-            contentContainerStyle={styles.scrollContent}
-            showsVerticalScrollIndicator={false}
-            keyboardShouldPersistTaps="handled"
-            bounces={false}
-          >
-            <View style={styles.header}>
+          <View style={styles.header}>
+            <View style={styles.logoContainer}>
               <View style={styles.logoCircle}>
-                <Ionicons name="book" size={32} color="#FFFFFF" />
+                <Ionicons name="book" size={35} color="#FFFFFF" />
               </View>
               <Text style={styles.title}>EduFun</Text>
-              <Text style={styles.subtitle}>Your Gateway to Learning Excellence</Text>
             </View>
+            <Text style={styles.subtitle}>Your Gateway to Learning Excellence</Text>
+          </View>
 
-            <View style={styles.formWrapper}>
+          <View style={styles.formWrapper}>
+            <View style={styles.formContainer}>
               {/* Toggle Buttons */}
               <View style={styles.toggleContainer}>
                 <TouchableOpacity
                   style={[styles.toggleButton, isLogin && styles.activeToggle]}
                   onPress={() => {
-                    if (!isLogin) toggleMode();
+                    if (!isLogin) {
+                      Keyboard.dismiss();
+                      setIsLogin(true);
+                      resetForm();
+                      setShowPassword(false);
+                      setShowConfirmPassword(false);
+                      setFocusedInput(null);
+                    }
                   }}
                   activeOpacity={0.7}
                 >
@@ -238,7 +255,14 @@ const AuthScreen = ({ route }) => {
                 <TouchableOpacity
                   style={[styles.toggleButton, !isLogin && styles.activeToggle]}
                   onPress={() => {
-                    if (isLogin) toggleMode();
+                    if (isLogin) {
+                      Keyboard.dismiss();
+                      setIsLogin(false);
+                      resetForm();
+                      setShowPassword(false);
+                      setShowConfirmPassword(false);
+                      setFocusedInput(null);
+                    }
                   }}
                   activeOpacity={0.7}
                 >
@@ -248,12 +272,12 @@ const AuthScreen = ({ route }) => {
                 </TouchableOpacity>
               </View>
 
-              <View style={styles.form}>
+                <View style={styles.form}>
                 <Text style={styles.formTitle}>
                   {isLogin ? 'Welcome Back' : 'Create Your Account'}
                 </Text>
                 <Text style={styles.formSubtitle}>
-                  {isLogin ? 'Sign in to continue' : 'Join us to start learning'}
+                  {isLogin ? 'Sign in to continue your learning journey' : 'Join us to start your learning adventure'}
                 </Text>
 
                 {!isLogin && (
@@ -261,41 +285,73 @@ const AuthScreen = ({ route }) => {
                     {renderInput('firstName', 'First Name', 'person', { 
                       autoCapitalize: 'words',
                       returnKeyType: 'next',
-                      onSubmitEditing: () => lastNameRef.current?.focus(),
+                      onSubmitEditing: () => {
+                        setTimeout(() => lastNameRef.current?.focus(), 50);
+                      },
+                      textContentType: 'givenName',
+                      autoComplete: 'name-given'
                     })}
                     {renderInput('lastName', 'Last Name', 'person', { 
                       autoCapitalize: 'words',
                       returnKeyType: 'next',
                       onSubmitEditing: () => {
-                        if (userType === 'student') {
-                          classNameRef.current?.focus();
-                        } else {
-                          emailRef.current?.focus();
-                        }
+                        setTimeout(() => {
+                          if (userType === 'student') {
+                            classNameRef.current?.focus();
+                          } else {
+                            phoneNumberRef.current?.focus();
+                          }
+                        }, 50);
                       },
+                      textContentType: 'familyName',
+                      autoComplete: 'name-family'
                     })}
                     
                     {userType === 'student' && (
                       <>
-                        {renderInput('className', 'Class (e.g., 5th)', 'school', { 
+                        {renderInput('className', 'Class (e.g., 5th Grade)', 'school', { 
                           autoCapitalize: 'words',
                           returnKeyType: 'next',
-                          onSubmitEditing: () => sectionRef.current?.focus(),
+                          onSubmitEditing: () => {
+                            setTimeout(() => sectionRef.current?.focus(), 50);
+                          }
                         })}
                         {renderInput('section', 'Section (e.g., A)', 'bookmark', { 
                           autoCapitalize: 'characters',
                           returnKeyType: 'next',
-                          onSubmitEditing: () => emailRef.current?.focus(),
+                          onSubmitEditing: () => {
+                            setTimeout(() => rollNumberRef.current?.focus(), 50);
+                          }
+                        })}
+                        {renderInput('rollNumber', 'Roll Number (Optional)', 'calculator', {
+                          returnKeyType: 'next',
+                          onSubmitEditing: () => {
+                            setTimeout(() => phoneNumberRef.current?.focus(), 50);
+                          }
                         })}
                       </>
                     )}
+                    
+                    {renderInput('phoneNumber', 'Phone Number (Optional)', 'call', { 
+                      keyboardType: 'phone-pad',
+                      returnKeyType: 'next',
+                      onSubmitEditing: () => {
+                        setTimeout(() => emailRef.current?.focus(), 50);
+                      },
+                      textContentType: 'telephoneNumber',
+                      autoComplete: 'tel'
+                    })}
                   </>
                 )}
 
                 {renderInput('email', 'Email Address', 'mail', { 
                   keyboardType: 'email-address',
                   returnKeyType: 'next',
-                  onSubmitEditing: () => passwordRef.current?.focus(),
+                  onSubmitEditing: () => {
+                    setTimeout(() => passwordRef.current?.focus(), 50);
+                  },
+                  textContentType: 'emailAddress',
+                  autoComplete: 'email'
                 })}
                 
                 {renderInput('password', 'Password', 'lock-closed', {
@@ -305,12 +361,14 @@ const AuthScreen = ({ route }) => {
                   returnKeyType: isLogin ? 'done' : 'next',
                   onSubmitEditing: () => {
                     if (!isLogin) {
-                      confirmPasswordRef.current?.focus();
+                      setTimeout(() => confirmPasswordRef.current?.focus(), 50);
                     } else {
                       Keyboard.dismiss();
-                      handleSubmit();
+                      setTimeout(() => handleSubmit(), 100);
                     }
                   },
+                  textContentType: isLogin ? 'password' : 'newPassword',
+                  autoComplete: 'password'
                 })}
 
                 {!isLogin && renderInput('confirmPassword', 'Confirm Password', 'lock-closed', {
@@ -320,8 +378,10 @@ const AuthScreen = ({ route }) => {
                   returnKeyType: 'done',
                   onSubmitEditing: () => {
                     Keyboard.dismiss();
-                    handleSubmit();
+                    setTimeout(() => handleSubmit(), 100);
                   },
+                  textContentType: 'newPassword',
+                  autoComplete: 'password'
                 })}
 
                 {isLogin && (
@@ -352,10 +412,10 @@ const AuthScreen = ({ route }) => {
                 </TouchableOpacity>
               </View>
             </View>
-          </ScrollView>
-        </LinearGradient>
-      </KeyboardAvoidingView>
-    </View>
+          </View>
+        </ScrollView>
+      </LinearGradient>
+    </KeyboardAvoidingView>
   );
 };
 
@@ -368,62 +428,78 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingBottom: 40,
+    flexGrow: 1,
   },
   header: {
-    paddingTop: Platform.OS === 'ios' ? 60 : 40,
-    paddingBottom: 20,
+    paddingTop: Platform.OS === 'ios' ? 50 : 30,
+    paddingBottom: 15,
     paddingHorizontal: 24,
     alignItems: 'center',
   },
+  logoContainer: {
+    alignItems: 'center',
+    marginBottom: 16,
+  },
   logoCircle: {
-    width: 70,
-    height: 70,
-    borderRadius: 35,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
     backgroundColor: 'rgba(255, 255, 255, 0.2)',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 10,
     borderWidth: 2,
     borderColor: 'rgba(255, 255, 255, 0.3)',
   },
   title: {
-    fontSize: 32,
+    fontSize: 28,
     fontWeight: 'bold',
     color: '#FFFFFF',
     letterSpacing: 1.5,
-    marginBottom: 6,
   },
   subtitle: {
-    fontSize: 13,
-    color: 'rgba(255, 255, 255, 0.9)',
+    fontSize: 12,
+    color: 'rgba(255, 255, 255, 0.8)',
     textAlign: 'center',
+    letterSpacing: 0.5,
+    fontWeight: '400',
   },
   formWrapper: {
+    flex: 1,
     paddingHorizontal: 24,
+    paddingTop: 5,
     paddingBottom: 30,
+    justifyContent: 'flex-start',
+  },
+  formContainer: {
+    paddingVertical: 20,
   },
   toggleContainer: {
     flexDirection: 'row',
     backgroundColor: 'rgba(255, 255, 255, 0.15)',
     borderRadius: 30,
-    padding: 4,
-    marginBottom: 20,
+    padding: 6,
+    marginBottom: 16,
   },
   toggleButton: {
     flex: 1,
     paddingVertical: 12,
     paddingHorizontal: 20,
-    borderRadius: 26,
+    borderRadius: 24,
     alignItems: 'center',
   },
   activeToggle: {
     backgroundColor: '#FFFFFF',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 5,
   },
   toggleText: {
     fontSize: 15,
     fontWeight: '600',
-    color: 'rgba(255, 255, 255, 0.8)',
+    color: 'rgba(255, 255, 255, 0.7)',
   },
   activeToggleText: {
     color: '#4F46E5',
@@ -431,85 +507,97 @@ const styles = StyleSheet.create({
   form: {
     backgroundColor: '#FFFFFF',
     borderRadius: 24,
-    padding: 24,
+    padding: 20,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
+    shadowOffset: { width: 0, height: 10 },
     shadowOpacity: 0.3,
-    shadowRadius: 16,
-    elevation: 8,
+    shadowRadius: 20,
+    elevation: 10,
   },
   formTitle: {
-    fontSize: 24,
+    fontSize: 22,
     fontWeight: 'bold',
     color: '#1F2937',
     textAlign: 'center',
-    marginBottom: 6,
+    marginBottom: 4,
+    letterSpacing: 0.3,
   },
   formSubtitle: {
-    fontSize: 13,
+    fontSize: 12,
     color: '#6B7280',
     textAlign: 'center',
-    marginBottom: 24,
+    marginBottom: 20,
+    lineHeight: 16,
   },
   inputContainer: {
-    marginBottom: 16,
+    marginBottom: 14,
     flexDirection: 'row',
     alignItems: 'center',
     borderWidth: 2,
     borderColor: '#E5E7EB',
-    borderRadius: 12,
+    borderRadius: 14,
     backgroundColor: '#F9FAFB',
-    paddingHorizontal: 14,
-    height: 52,
+    paddingHorizontal: 16,
+    height: 50,
   },
   inputContainerFocused: {
     borderColor: '#4F46E5',
     backgroundColor: '#FFFFFF',
+    shadowColor: '#4F46E5',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
   },
   inputIcon: {
-    marginRight: 10,
+    marginRight: 12,
+    color: '#9CA3AF',
   },
   input: {
     flex: 1,
     fontSize: 15,
     color: '#1F2937',
-    padding: 0,
+    fontWeight: '500',
+    paddingVertical: 0, // Remove extra padding that might cause issues
   },
   eyeIcon: {
     padding: 8,
   },
   forgotPassword: {
     alignItems: 'flex-end',
-    marginBottom: 20,
-    marginTop: -8,
+    marginBottom: 16,
+    marginTop: -6,
   },
   forgotPasswordText: {
     color: '#4F46E5',
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '600',
   },
   button: {
     backgroundColor: '#4F46E5',
-    borderRadius: 12,
-    height: 52,
+    borderRadius: 14,
+    height: 50,
     alignItems: 'center',
     justifyContent: 'center',
+    marginTop: 6,
     shadowColor: '#4F46E5',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 4,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.4,
+    shadowRadius: 10,
+    elevation: 6,
   },
   buttonDisabled: {
     backgroundColor: '#9CA3AF',
+    shadowColor: '#9CA3AF',
   },
   buttonText: {
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '700',
+    letterSpacing: 0.5,
   },
   secondaryButton: {
-    paddingVertical: 14,
+    paddingVertical: 12,
     alignItems: 'center',
     marginTop: 12,
   },

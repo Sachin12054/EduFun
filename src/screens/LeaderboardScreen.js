@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -6,24 +6,97 @@ import {
   ScrollView,
   TouchableOpacity,
   SafeAreaView,
+  ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../contexts/ThemeContext';
+import { useAuth } from '../contexts/AuthContext';
+import { useUserProgress } from '../contexts/UserProgressContext';
+import { getLeaderboard } from '../services/database';
 
 const LeaderboardScreen = ({ navigation }) => {
   const { theme } = useTheme();
+  const { user } = useAuth();
+  const { studentProfile, userProgress } = useUserProgress();
+  const [leaderboardData, setLeaderboardData] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [currentUserRank, setCurrentUserRank] = useState(null);
 
-  // Mock leaderboard data
-  const leaderboardData = [
-    { rank: 1, name: 'Alex Chen', points: 2840, avatar: 'A', color: '#FFD700' },
-    { rank: 2, name: 'Sarah Kim', points: 2675, avatar: 'S', color: '#C0C0C0' },
-    { rank: 3, name: 'Mike Johnson', points: 2450, avatar: 'M', color: '#CD7F32' },
-    { rank: 4, name: 'Emma Davis', points: 2320, avatar: 'E', color: '#667eea' },
-    { rank: 5, name: 'You', points: 2150, avatar: 'Y', color: '#4ECDC4' },
-    { rank: 6, name: 'James Wilson', points: 2080, avatar: 'J', color: '#FF6B6B' },
-    { rank: 7, name: 'Lisa Brown', points: 1950, avatar: 'L', color: '#96CEB4' },
-    { rank: 8, name: 'David Lee', points: 1820, avatar: 'D', color: '#FECA57' },
-  ];
+  // Load leaderboard data
+  useEffect(() => {
+    loadLeaderboard();
+  }, [studentProfile]);
+
+  const loadLeaderboard = async () => {
+    try {
+      setIsLoading(true);
+      const grade = studentProfile?.grade || 1;
+      const data = await getLeaderboard(grade, 50); // Get top 50
+      
+      // Add current user if not in top 50
+      const currentUserId = user?.uid;
+      const userInLeaderboard = data.find(entry => entry.studentId === currentUserId);
+      
+      if (!userInLeaderboard && studentProfile && userProgress) {
+        // Add current user to the list
+        data.push({
+          rank: data.length + 1,
+          studentId: currentUserId,
+          name: studentProfile.name || 'You',
+          avatar: studentProfile.avatar || '👦',
+          totalPoints: userProgress.totalPoints || 0,
+          totalCoins: userProgress.totalCoins || 0,
+          badges: userProgress.badges?.length || 0,
+          isCurrentUser: true
+        });
+      } else if (userInLeaderboard) {
+        userInLeaderboard.isCurrentUser = true;
+      }
+      
+      // Map to display format
+      const formattedData = data.map((entry, index) => ({
+        rank: entry.rank || (index + 1),
+        name: entry.isCurrentUser ? 'You' : entry.name,
+        points: entry.totalPoints || 0,
+        avatar: entry.avatar || entry.name?.charAt(0)?.toUpperCase() || '?',
+        color: getAvatarColor(index),
+        studentId: entry.studentId,
+        isCurrentUser: entry.isCurrentUser
+      }));
+
+      setLeaderboardData(formattedData);
+      
+      // Find current user rank
+      const userEntry = formattedData.find(entry => entry.isCurrentUser);
+      if (userEntry) {
+        setCurrentUserRank(userEntry.rank);
+      }
+    } catch (error) {
+      console.error('Error loading leaderboard:', error);
+      // Fallback to showing just current user
+      if (studentProfile && userProgress) {
+        setLeaderboardData([{
+          rank: 1,
+          name: 'You',
+          points: userProgress.totalPoints || 0,
+          avatar: studentProfile.avatar || '👦',
+          color: '#4ECDC4',
+          isCurrentUser: true
+        }]);
+        setCurrentUserRank(1);
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const getAvatarColor = (index) => {
+    const colors = [
+      '#FFD700', '#C0C0C0', '#CD7F32', '#667eea', '#4ECDC4', 
+      '#FF6B6B', '#96CEB4', '#FECA57', '#A8E6CF', '#FF8B94'
+    ];
+    return colors[index % colors.length];
+  };
 
   const getRankIcon = (rank) => {
     switch (rank) {
@@ -54,10 +127,21 @@ const LeaderboardScreen = ({ navigation }) => {
           <Ionicons name="arrow-back" size={24} color={theme.text} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: theme.text }]}>Leaderboard</Text>
-        <View style={styles.placeholder} />
+        <TouchableOpacity 
+          style={styles.refreshButton}
+          onPress={loadLeaderboard}
+        >
+          <Ionicons name="refresh" size={24} color={theme.text} />
+        </TouchableOpacity>
       </View>
 
-      <ScrollView style={styles.content}>
+      {isLoading ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={theme.primary} />
+          <Text style={[styles.loadingText, { color: theme.textSecondary }]}>Loading rankings...</Text>
+        </View>
+      ) : (
+        <ScrollView style={styles.content}>
         {/* Top 3 Podium */}
         <View style={styles.podiumSection}>
           <Text style={[styles.sectionTitle, { color: theme.text }]}>🏆 Top Performers</Text>
@@ -116,9 +200,9 @@ const LeaderboardScreen = ({ navigation }) => {
               style={[
                 styles.leaderboardItem, 
                 { 
-                  backgroundColor: user.name === 'You' ? theme.primary + '10' : theme.surface,
-                  borderColor: user.name === 'You' ? theme.primary : 'transparent',
-                  borderWidth: user.name === 'You' ? 2 : 0,
+                  backgroundColor: user.isCurrentUser ? theme.primary + '10' : theme.surface,
+                  borderColor: user.isCurrentUser ? theme.primary : 'transparent',
+                  borderWidth: user.isCurrentUser ? 2 : 0,
                 }
               ]}
             >
@@ -133,13 +217,13 @@ const LeaderboardScreen = ({ navigation }) => {
                 </View>
                 
                 <View style={[styles.avatar, { backgroundColor: user.color }]}>
-                  <Text style={styles.avatarText}>{user.avatar}</Text>
+                  <Text style={styles.avatarText}>{typeof user.avatar === 'string' && user.avatar.length === 1 ? user.avatar : user.avatar}</Text>
                 </View>
                 
                 <View style={styles.userDetails}>
                   <Text style={[styles.userName, { color: theme.text }]}>
                     {user.name}
-                    {user.name === 'You' && ' 👤'}
+                    {user.isCurrentUser && ' 👤'}
                   </Text>
                   <Text style={[styles.userPoints, { color: theme.textSecondary }]}>
                     {user.points} points
@@ -168,7 +252,21 @@ const LeaderboardScreen = ({ navigation }) => {
             • Help classmates to earn extra points
           </Text>
         </View>
-      </ScrollView>
+
+        {/* Your Current Rank */}
+        {currentUserRank && (
+          <View style={[styles.currentRankSection, { backgroundColor: theme.surface }]}>
+            <Text style={[styles.currentRankTitle, { color: theme.text }]}>Your Current Rank</Text>
+            <View style={styles.currentRankBadge}>
+              <Text style={styles.currentRankNumber}>#{currentUserRank}</Text>
+              <Text style={[styles.currentRankPoints, { color: theme.textSecondary }]}>
+                {userProgress?.totalPoints || 0} points
+              </Text>
+            </View>
+          </View>
+        )}
+        </ScrollView>
+      )}
     </SafeAreaView>
   );
 };
@@ -195,6 +293,19 @@ const styles = StyleSheet.create({
   },
   placeholder: {
     width: 40,
+  },
+  refreshButton: {
+    padding: 8,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 40,
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 16,
   },
   content: {
     flex: 1,
@@ -338,6 +449,35 @@ const styles = StyleSheet.create({
   tipsText: {
     fontSize: 14,
     lineHeight: 20,
+  },
+  currentRankSection: {
+    padding: 20,
+    borderRadius: 16,
+    marginHorizontal: 20,
+    marginBottom: 20,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  currentRankTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 12,
+  },
+  currentRankBadge: {
+    alignItems: 'center',
+  },
+  currentRankNumber: {
+    fontSize: 36,
+    fontWeight: 'bold',
+    color: '#4ECDC4',
+    marginBottom: 4,
+  },
+  currentRankPoints: {
+    fontSize: 14,
   },
 });
 

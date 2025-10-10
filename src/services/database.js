@@ -159,7 +159,8 @@ export const getStudentProgress = async (studentId) => {
 export const markLessonComplete = async (studentId, lessonData) => {
   try {
     const progressRef = doc(db, 'Students', studentId, 'Progress', 'stats');
-    const lessonKey = `${lessonData.subject}_${lessonData.grade}_${lessonData.lessonId}`;
+    // Fixed: Match the format used in SubjectScreen
+    const lessonKey = `${lessonData.subject}_grade${lessonData.grade}_lesson_${lessonData.lessonId}`;
     
     await updateDoc(progressRef, {
       completedLessons: arrayUnion(lessonKey),
@@ -196,7 +197,8 @@ export const markLessonComplete = async (studentId, lessonData) => {
 export const saveQuizResult = async (studentId, quizData) => {
   try {
     const progressRef = doc(db, 'Students', studentId, 'Progress', 'stats');
-    const quizKey = `${quizData.subject}_${quizData.grade}_${quizData.quizId}`;
+    // Fixed: Match the format used in SubjectScreen
+    const quizKey = `${quizData.subject}_grade${quizData.grade}_quiz_${quizData.quizId}`;
     
     const quizResult = {
       score: quizData.score,
@@ -545,7 +547,7 @@ export const getCompleteStudentData = async (studentId) => {
  * Check if lesson is completed
  */
 export const isLessonCompleted = (completedLessons, subject, grade, lessonId) => {
-  const lessonKey = `${subject}_${grade}_${lessonId}`;
+  const lessonKey = `${subject}_grade${grade}_lesson_${lessonId}`;
   return completedLessons?.includes(lessonKey) || false;
 };
 
