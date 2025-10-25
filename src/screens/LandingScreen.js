@@ -1,435 +1,753 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
   TouchableOpacity,
   StyleSheet,
   Dimensions,
-  ScrollView,
   StatusBar,
-  Image,
+  Animated,
+  Platform,
+  ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
+import EduFunLogo from '../components/EduFunLogo';
 
 const { width, height } = Dimensions.get('window');
 
 const LandingScreen = ({ navigation }) => {
-  const [selectedRole, setSelectedRole] = useState(null);
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(30)).current;
+  const logoScaleAnim = useRef(new Animated.Value(0.5)).current;
+  const logoRotateAnim = useRef(new Animated.Value(0)).current;
+  const titleAnim = useRef(new Animated.Value(-20)).current;
+  const featureAnimations = useRef([
+    new Animated.Value(0),
+    new Animated.Value(0),
+    new Animated.Value(0),
+    new Animated.Value(0),
+  ]).current;
+  const buttonAnimations = useRef([
+    new Animated.Value(0),
+    new Animated.Value(0),
+  ]).current;
+  const particleAnimations = useRef(
+    Array.from({ length: 6 }, () => ({
+      x: new Animated.Value(Math.random() * width),
+      y: new Animated.Value(Math.random() * height),
+      opacity: new Animated.Value(0),
+      scale: new Animated.Value(0),
+    }))
+  ).current;
+
+  useEffect(() => {
+    // Start particle animations
+    particleAnimations.forEach((particle, index) => {
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(particle.opacity, {
+            toValue: 0.8,
+            duration: 1000 + index * 200,
+            useNativeDriver: true,
+          }),
+          Animated.timing(particle.opacity, {
+            toValue: 0,
+            duration: 1000 + index * 200,
+            useNativeDriver: true,
+          }),
+        ])
+      ).start();
+
+      Animated.loop(
+        Animated.timing(particle.scale, {
+          toValue: 1,
+          duration: 1500 + index * 150,
+          useNativeDriver: true,
+        })
+      ).start();
+    });
+
+    // Main animation sequence - Much faster timing
+    Animated.sequence([
+      // Logo entrance with rotation - Fast
+      Animated.parallel([
+        Animated.timing(logoScaleAnim, {
+          toValue: 1,
+          duration: 400, // Reduced from 1000ms
+          useNativeDriver: true,
+        }),
+        Animated.timing(logoRotateAnim, {
+          toValue: 1,
+          duration: 400, // Reduced from 1000ms
+          useNativeDriver: true,
+        }),
+        Animated.timing(fadeAnim, {
+          toValue: 1,
+          duration: 300, // Reduced from 800ms
+          useNativeDriver: true,
+        }),
+      ]),
+      // Title slide in - Fast
+      Animated.timing(titleAnim, {
+        toValue: 0,
+        duration: 250, // Reduced from 600ms
+        useNativeDriver: true,
+      }),
+      // Content slide in - Fast
+      Animated.timing(slideAnim, {
+        toValue: 0,
+        duration: 200, // Reduced from 500ms
+        useNativeDriver: true,
+      }),
+      // Feature pills with stagger - Fast
+      Animated.stagger(50, // Reduced from 100ms
+        featureAnimations.map(anim =>
+          Animated.timing(anim, {
+            toValue: 1,
+            duration: 200, // Reduced from 400ms
+            useNativeDriver: true,
+          })
+        )
+      ),
+      // Button animations with bounce - Fast and dramatic
+      Animated.stagger(75, // Reduced from 150ms
+        buttonAnimations.map(anim =>
+          Animated.spring(anim, {
+            toValue: 1,
+            tension: 120, // Increased for snappier animation
+            friction: 6, // Reduced for more bounce
+            useNativeDriver: true,
+          })
+        )
+      ),
+    ]).start();
+  }, []);
 
   const features = [
-    {
-      icon: 'trophy',
-      title: 'Gamified Learning',
-      description: 'Earn points, badges, and climb the leaderboard',
-    },
-    {
-      icon: 'book',
-      title: 'Interactive Courses',
-      description: 'Engage with dynamic educational content',
-    },
-    {
-      icon: 'stats-chart',
-      title: 'Track Progress',
-      description: 'Monitor your learning journey in real-time',
-    },
-    {
-      icon: 'people',
-      title: 'Community',
-      description: 'Learn together with fellow students',
-    },
+    { icon: 'trophy', title: 'Gamified', color: '#FFD700' },
+    { icon: 'book', title: 'Interactive', color: '#4ECDC4' },
+    { icon: 'stats-chart', title: 'Progress', color: '#45B7D1' },
+    { icon: 'people', title: 'Community', color: '#96CEB4' },
   ];
 
-  return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" />
-      <LinearGradient
-        colors={['#4c669f', '#3b5998', '#192f6a']}
-        style={styles.background}
-      >
-        <ScrollView 
-          contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}
-        >
-          {/* Hero Section */}
-          <View style={styles.heroSection}>
-            <View style={styles.logoContainer}>
-              <View style={styles.logoBackground}>
-                <Image
-                  source={require('../../assets/Logo/Logo.jpg')}
-                  style={styles.logoImage}
-                  resizeMode="contain"
-                />
-              </View>
-            </View>
-            
-            <Text style={styles.title}>EduFun</Text>
-            <Text style={styles.tagline}>
-              Transform Learning into an Adventure
-            </Text>
-            <Text style={styles.description}>
-              Join thousands of students on a gamified educational journey that makes learning fun, engaging, and rewarding!
-            </Text>
-          </View>
+  const handleRolePress = (role) => {
+    // Professional press animation with haptic feedback
+    const buttonIndex = role === 'student' ? 0 : 1;
+    
+    // Scale down animation
+    Animated.sequence([
+      Animated.timing(buttonAnimations[buttonIndex], {
+        toValue: 0.96,
+        duration: 100,
+        useNativeDriver: true,
+      }),
+      Animated.spring(buttonAnimations[buttonIndex], {
+        toValue: 1,
+        tension: 150,
+        friction: 8,
+        useNativeDriver: true,
+      }),
+    ]).start();
 
-          {/* Features Grid */}
-          <View style={styles.featuresSection}>
-            <Text style={styles.sectionTitle}>Why Choose EduFun?</Text>
-            <View style={styles.featuresGrid}>
+    // Navigate after animation
+    setTimeout(() => {
+      navigation.navigate(role === 'student' ? 'StudentAuth' : 'TeacherAuth');
+    }, 200);
+  };
+
+  const logoRotate = logoRotateAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['0deg', '360deg'],
+  });
+
+  return (
+    <View style={styles.container}>
+      <StatusBar barStyle="light-content" backgroundColor="transparent" translucent hidden />
+      <LinearGradient
+        colors={['#6366f1', '#8b5cf6', '#a855f7']}
+        style={styles.background}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+      >
+        {/* Animated Background Particles */}
+        {particleAnimations.map((particle, index) => (
+          <Animated.View
+            key={index}
+            style={[
+              styles.particle,
+              {
+                opacity: particle.opacity,
+                transform: [
+                  { translateX: particle.x },
+                  { translateY: particle.y },
+                  { scale: particle.scale },
+                ],
+              },
+            ]}
+          />
+        ))}
+
+        <View style={styles.content}>
+          {/* Header Section - Compact */}
+          <Animated.View 
+            style={[
+              styles.header,
+              {
+                opacity: fadeAnim,
+                transform: [
+                  { scale: logoScaleAnim },
+                  { rotate: logoRotate },
+                ],
+              },
+            ]}
+          >
+            <View style={styles.logoContainer}>
+              <EduFunLogo 
+                size={100}
+                showBackground={true}
+                backgroundStyle={styles.logoBackground}
+              />
+            </View>
+          </Animated.View>
+
+          {/* Brand Section */}
+          <Animated.View 
+            style={[
+              styles.brandSection,
+              {
+                opacity: fadeAnim,
+                transform: [{ translateY: titleAnim }],
+              },
+            ]}
+          >
+            <Text style={styles.title}>EduFun</Text>
+            <Text style={styles.tagline}>Transform Learning Into Adventure</Text>
+          </Animated.View>
+
+          {/* Feature Pills - Horizontal */}
+          <Animated.View 
+            style={[
+              styles.featuresContainer,
+              {
+                opacity: fadeAnim,
+                transform: [{ translateY: slideAnim }],
+              },
+            ]}
+          >
+            <View style={styles.featurePills}>
               {features.map((feature, index) => (
-                <View key={index} style={styles.featureCard}>
-                  <View style={styles.featureIconContainer}>
-                    <Ionicons name={feature.icon} size={32} color="#667eea" />
-                  </View>
-                  <Text style={styles.featureTitle}>{feature.title}</Text>
-                  <Text style={styles.featureDescription}>{feature.description}</Text>
-                </View>
+                <Animated.View
+                  key={index}
+                  style={[
+                    styles.featurePill,
+                    { backgroundColor: feature.color + '20' },
+                    {
+                      opacity: featureAnimations[index],
+                      transform: [
+                        {
+                          translateY: featureAnimations[index].interpolate({
+                            inputRange: [0, 1],
+                            outputRange: [20, 0],
+                          }),
+                        },
+                        {
+                          scale: featureAnimations[index].interpolate({
+                            inputRange: [0, 1],
+                            outputRange: [0.8, 1],
+                          }),
+                        },
+                        {
+                          rotateZ: featureAnimations[index].interpolate({
+                            inputRange: [0, 1],
+                            outputRange: ['-5deg', '0deg'],
+                          }),
+                        },
+                      ],
+                    },
+                  ]}
+                >
+                  <Ionicons name={feature.icon} size={16} color={feature.color} />
+                  <Text style={[styles.featurePillText, { color: feature.color }]}>
+                    {feature.title}
+                  </Text>
+                </Animated.View>
               ))}
             </View>
-          </View>
+          </Animated.View>
 
-          {/* CTA Buttons */}
-          <View style={styles.ctaSection}>
-            {/* Role Selection Title */}
-            <Text style={styles.roleSelectionTitle}>Select Your Role</Text>
-            
-            {/* Role Selection Buttons */}
-            <View style={styles.roleButtonsContainer}>
-              <TouchableOpacity
-                style={[
-                  styles.roleButton,
-                  selectedRole === 'student' && styles.roleButtonSelected
-                ]}
-                onPress={() => setSelectedRole('student')}
-                activeOpacity={0.8}
-              >
-                <LinearGradient
-                  colors={selectedRole === 'student' ? ['#667eea', '#764ba2'] : ['rgba(255,255,255,0.1)', 'rgba(255,255,255,0.1)']}
-                  style={styles.roleButtonGradient}
-                >
-                  <Ionicons 
-                    name="school" 
-                    size={40} 
-                    color={selectedRole === 'student' ? 'white' : '#a5b4fc'} 
-                  />
-                  <Text style={[
-                    styles.roleButtonText,
-                    selectedRole === 'student' && styles.roleButtonTextSelected
-                  ]}>
-                    Student
-                  </Text>
-                </LinearGradient>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[
-                  styles.roleButton,
-                  selectedRole === 'teacher' && styles.roleButtonSelected
-                ]}
-                onPress={() => setSelectedRole('teacher')}
-                activeOpacity={0.8}
-              >
-                <LinearGradient
-                  colors={selectedRole === 'teacher' ? ['#667eea', '#764ba2'] : ['rgba(255,255,255,0.1)', 'rgba(255,255,255,0.1)']}
-                  style={styles.roleButtonGradient}
-                >
-                  <Ionicons 
-                    name="person" 
-                    size={40} 
-                    color={selectedRole === 'teacher' ? 'white' : '#a5b4fc'} 
-                  />
-                  <Text style={[
-                    styles.roleButtonText,
-                    selectedRole === 'teacher' && styles.roleButtonTextSelected
-                  ]}>
-                    Teacher
-                  </Text>
-                </LinearGradient>
-              </TouchableOpacity>
-            </View>
-
-            {/* Get Started Button */}
-            <TouchableOpacity
+          {/* Enhanced Role Selection with Professional Animations */}
+          <Animated.View 
+            style={[
+              styles.roleSection,
+              {
+                opacity: fadeAnim,
+                transform: [{ translateY: slideAnim }],
+              },
+            ]}
+          >
+            <Animated.View
               style={[
-                styles.primaryButton,
-                !selectedRole && styles.primaryButtonDisabled
+                styles.roleTitleContainer,
+                {
+                  transform: [
+                    {
+                      scale: buttonAnimations[0].interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [0.8, 1],
+                      }),
+                    },
+                  ],
+                },
               ]}
-              onPress={() => {
-                if (selectedRole) {
-                  navigation.navigate('Auth', { userType: selectedRole });
-                }
-              }}
-              activeOpacity={selectedRole ? 0.9 : 1}
-              disabled={!selectedRole}
             >
-              <LinearGradient
-                colors={selectedRole ? ['#667eea', '#764ba2'] : ['#999', '#666']}
-                style={styles.buttonGradient}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
+              <Text style={styles.roleTitle}>Choose Your Path</Text>
+              <Text style={styles.roleSubtitle}>Embark on your learning journey</Text>
+              <View style={styles.titleUnderline} />
+            </Animated.View>
+            
+            <View style={styles.roleCards}>
+              <Animated.View
+                style={[
+                  styles.roleCardWrapper,
+                  {
+                    opacity: buttonAnimations[0],
+                    transform: [
+                      {
+                        translateX: buttonAnimations[0].interpolate({
+                          inputRange: [0, 1],
+                          outputRange: [-50, 0],
+                        }),
+                      },
+                      {
+                        scale: buttonAnimations[0].interpolate({
+                          inputRange: [0, 1],
+                          outputRange: [0.9, 1],
+                        }),
+                      },
+                    ],
+                  },
+                ]}
               >
-                <Text style={styles.primaryButtonText}>Get Started</Text>
-                <Ionicons name="arrow-forward" size={24} color="white" />
-              </LinearGradient>
-            </TouchableOpacity>
-          </View>
+                <TouchableOpacity
+                  style={styles.roleCard}
+                  onPress={() => handleRolePress('student')}
+                  activeOpacity={0.8}
+                >
+                  <LinearGradient
+                    colors={['#0ea5e9', '#0284c7', '#0369a1']}
+                    style={styles.roleCardGradient}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                  >
+                    <View style={styles.roleCardOverlay} />
+                    <View style={styles.roleCardContent}>
+                      <View style={styles.roleCardIconContainer}>
+                        <View style={[styles.roleCardIcon, styles.studentIconStyle]}>
+                          <Ionicons name="school" size={26} color="white" />
+                        </View>
+                      </View>
+                      <View style={styles.roleCardTextContainer}>
+                        <Text style={styles.roleCardTitle}>Student</Text>
+                        <Text style={styles.roleCardSubtitle}>Start Learning Journey</Text>
+                      </View>
+                      <View style={styles.roleCardArrowContainer}>
+                        <Animated.View 
+                          style={[
+                            styles.roleCardArrow,
+                            styles.studentArrowStyle,
+                            {
+                              transform: [
+                                {
+                                  translateX: buttonAnimations[0].interpolate({
+                                    inputRange: [0, 1],
+                                    outputRange: [15, 0],
+                                  }),
+                                },
+                              ],
+                            },
+                          ]}
+                        >
+                          <Ionicons name="arrow-forward" size={22} color="white" />
+                        </Animated.View>
+                      </View>
+                    </View>
+                  </LinearGradient>
+                </TouchableOpacity>
+              </Animated.View>
 
-          {/* Stats Section */}
-          <View style={styles.statsSection}>
-            <View style={styles.statItem}>
-              <Text style={styles.statNumber}>10K+</Text>
-              <Text style={styles.statLabel}>Active Students</Text>
+              <Animated.View
+                style={[
+                  styles.roleCardWrapper,
+                  {
+                    opacity: buttonAnimations[1],
+                    transform: [
+                      {
+                        translateX: buttonAnimations[1].interpolate({
+                          inputRange: [0, 1],
+                          outputRange: [50, 0],
+                        }),
+                      },
+                      {
+                        scale: buttonAnimations[1].interpolate({
+                          inputRange: [0, 1],
+                          outputRange: [0.9, 1],
+                        }),
+                      },
+                    ],
+                  },
+                ]}
+              >
+                <TouchableOpacity
+                  style={styles.roleCard}
+                  onPress={() => handleRolePress('teacher')}
+                  activeOpacity={0.8}
+                >
+                  <LinearGradient
+                    colors={['#f97316', '#ea580c', '#dc2626']}
+                    style={styles.roleCardGradient}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                  >
+                    <View style={styles.roleCardOverlay} />
+                    <View style={styles.roleCardContent}>
+                      <View style={styles.roleCardIconContainer}>
+                        <View style={[styles.roleCardIcon, styles.teacherIconStyle]}>
+                          <Ionicons name="person" size={26} color="white" />
+                        </View>
+                      </View>
+                      <View style={styles.roleCardTextContainer}>
+                        <Text style={styles.roleCardTitle}>Teacher</Text>
+                        <Text style={styles.roleCardSubtitle}>Guide & Inspire Students</Text>
+                      </View>
+                      <View style={styles.roleCardArrowContainer}>
+                        <Animated.View 
+                          style={[
+                            styles.roleCardArrow,
+                            styles.teacherArrowStyle,
+                            {
+                              transform: [
+                                {
+                                  translateX: buttonAnimations[1].interpolate({
+                                    inputRange: [0, 1],
+                                    outputRange: [15, 0],
+                                  }),
+                                },
+                              ],
+                            },
+                          ]}
+                        >
+                          <Ionicons name="arrow-forward" size={22} color="white" />
+                        </Animated.View>
+                      </View>
+                    </View>
+                  </LinearGradient>
+                </TouchableOpacity>
+              </Animated.View>
             </View>
-            <View style={styles.statDivider} />
-            <View style={styles.statItem}>
-              <Text style={styles.statNumber}>500+</Text>
-              <Text style={styles.statLabel}>Courses</Text>
-            </View>
-            <View style={styles.statDivider} />
-            <View style={styles.statItem}>
-              <Text style={styles.statNumber}>95%</Text>
-              <Text style={styles.statLabel}>Satisfaction</Text>
-            </View>
-          </View>
+          </Animated.View>
 
           {/* Footer */}
-          <View style={styles.footer}>
+          <Animated.View 
+            style={[
+              styles.footer,
+              { 
+                opacity: fadeAnim,
+                transform: [
+                  {
+                    translateY: fadeAnim.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [20, 0],
+                    }),
+                  },
+                ],
+              }
+            ]}
+          >
             <Text style={styles.footerText}>
-              © 2025 EduFun. Learning Made Fun.
+              Join thousands of learners worldwide
             </Text>
-          </View>
-        </ScrollView>
+          </Animated.View>
+        </View>
       </LinearGradient>
-    </SafeAreaView>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#192f6a',
+    backgroundColor: '#6366f1', // Fallback color
   },
   background: {
     flex: 1,
   },
-  scrollContent: {
-    flexGrow: 1,
-    paddingBottom: 30,
-  },
-  heroSection: {
-    alignItems: 'center',
+  content: {
+    flex: 1,
+    paddingHorizontal: 20,
     paddingTop: 40,
-    paddingHorizontal: 24,
-    paddingBottom: 40,
+    paddingBottom: 30,
+    justifyContent: 'space-evenly',
+  },
+
+  // Animated Background Particles
+  particle: {
+    position: 'absolute',
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: 'rgba(255, 255, 255, 0.6)',
+    shadowColor: '#fff',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.8,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+
+  // Header Section - Compact
+  header: {
+    alignItems: 'center',
+    paddingVertical: 10,
   },
   logoContainer: {
-    marginBottom: 24,
-    alignItems: 'center',
-  },
-  logoBackground: {
-    width: 140,
-    height: 140,
-    borderRadius: 70,
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#667eea',
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.4,
     shadowRadius: 16,
-    elevation: 10,
-    padding: 15,
-    borderWidth: 3,
-    borderColor: 'rgba(255, 255, 255, 0.3)',
+    elevation: 12,
   },
-  logoImage: {
-    width: 110,
-    height: 110,
-    borderRadius: 55,
+  logoBackground: {
+    backgroundColor: 'rgba(255, 255, 255, 0.98)',
+    shadowColor: '#6366f1',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.5,
+    shadowRadius: 16,
+    elevation: 15,
+    borderWidth: 3,
+    borderColor: 'rgba(255, 255, 255, 0.5)',
+  },
+
+  // Brand Section
+  brandSection: {
+    alignItems: 'center',
+    paddingVertical: 8,
   },
   title: {
-    fontSize: 56,
-    fontWeight: 'bold',
+    fontSize: 38,
+    fontWeight: '900',
     color: 'white',
-    marginBottom: 12,
-    letterSpacing: 1,
+    marginBottom: 6,
+    letterSpacing: 2,
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'Roboto',
+    textShadowColor: 'rgba(0, 0, 0, 0.4)',
+    textShadowOffset: { width: 0, height: 3 },
+    textShadowRadius: 6,
   },
   tagline: {
-    fontSize: 22,
-    color: '#a5b4fc',
-    marginBottom: 16,
+    fontSize: 15,
+    color: 'rgba(255, 255, 255, 0.95)',
+    textAlign: 'center',
     fontWeight: '600',
-    textAlign: 'center',
+    letterSpacing: 0.8,
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'Roboto',
+    lineHeight: 20,
   },
-  description: {
-    fontSize: 16,
-    color: 'rgba(255, 255, 255, 0.8)',
-    textAlign: 'center',
-    lineHeight: 24,
-    maxWidth: 340,
+
+  // Features Section - Horizontal Pills
+  featuresContainer: {
+    paddingVertical: 12,
   },
-  featuresSection: {
-    paddingHorizontal: 24,
-    marginBottom: 32,
-  },
-  sectionTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: 'white',
-    marginBottom: 20,
-    textAlign: 'center',
-  },
-  featuresGrid: {
+  featurePills: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    justifyContent: 'space-between',
-  },
-  featureCard: {
-    width: (width - 60) / 2,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 16,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
-  },
-  featureIconContainer: {
-    width: 64,
-    height: 64,
-    backgroundColor: 'white',
-    borderRadius: 32,
     justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 12,
+    gap: 10,
   },
-  featureTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: 'white',
-    marginBottom: 8,
-    textAlign: 'center',
-  },
-  featureDescription: {
-    fontSize: 12,
-    color: 'rgba(255, 255, 255, 0.7)',
-    textAlign: 'center',
-    lineHeight: 18,
-  },
-  ctaSection: {
-    paddingHorizontal: 24,
-    marginBottom: 32,
-  },
-  roleSelectionTitle: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    color: 'white',
-    textAlign: 'center',
-    marginBottom: 20,
-  },
-  roleButtonsContainer: {
+  featurePill: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 24,
-    gap: 12,
-  },
-  roleButton: {
-    flex: 1,
-    borderRadius: 20,
-    overflow: 'hidden',
-    borderWidth: 2,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
-  },
-  roleButtonSelected: {
-    borderColor: '#667eea',
-    shadowColor: '#667eea',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.5,
-    shadowRadius: 12,
-    elevation: 8,
-  },
-  roleButtonGradient: {
-    paddingVertical: 24,
-    paddingHorizontal: 16,
     alignItems: 'center',
-    justifyContent: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 25,
     gap: 8,
+    borderWidth: 1.5,
+    borderColor: 'rgba(255, 255, 255, 0.4)',
+    backdropFilter: 'blur(15px)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    elevation: 6,
   },
-  roleButtonText: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#a5b4fc',
-    marginTop: 8,
+  featurePillText: {
+    fontSize: 13,
+    fontWeight: '700',
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'Roboto',
   },
-  roleButtonTextSelected: {
-    color: 'white',
+
+  // Enhanced Role Selection Section
+  roleSection: {
+    paddingVertical: 15,
   },
-  primaryButton: {
-    borderRadius: 30,
-    overflow: 'hidden',
-    shadowColor: '#667eea',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 8,
-  },
-  primaryButtonDisabled: {
-    opacity: 0.5,
-    shadowOpacity: 0,
-    elevation: 0,
-  },
-  buttonGradient: {
-    flexDirection: 'row',
+  roleTitleContainer: {
     alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 18,
-    paddingHorizontal: 32,
-    gap: 8,
+    marginBottom: 25,
   },
-  primaryButtonText: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: 'white',
-  },
-  statsSection: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    alignItems: 'center',
-    paddingHorizontal: 24,
-    paddingVertical: 24,
-    marginHorizontal: 24,
-    marginBottom: 24,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
-  },
-  statItem: {
-    alignItems: 'center',
-  },
-  statNumber: {
+  roleTitle: {
     fontSize: 28,
-    fontWeight: 'bold',
+    fontWeight: '800',
+    color: 'white',
+    textAlign: 'center',
+    marginBottom: 6,
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'Roboto',
+    letterSpacing: 0.8,
+    textShadowColor: 'rgba(0, 0, 0, 0.3)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 4,
+  },
+  roleSubtitle: {
+    fontSize: 14,
+    color: 'rgba(255, 255, 255, 0.85)',
+    textAlign: 'center',
+    fontWeight: '500',
+    marginBottom: 10,
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'Roboto',
+    letterSpacing: 0.4,
+  },
+  titleUnderline: {
+    width: 50,
+    height: 2.5,
+    backgroundColor: 'rgba(255, 255, 255, 0.8)',
+    borderRadius: 2,
+  },
+  roleCards: {
+    gap: 18,
+  },
+  roleCardWrapper: {
+    borderRadius: 18,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.25,
+    shadowRadius: 16,
+    elevation: 12,
+  },
+  roleCard: {
+    borderRadius: 18,
+    overflow: 'hidden',
+  },
+  roleCardGradient: {
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderRadius: 18,
+    position: 'relative',
+  },
+  roleCardOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: '40%',
+    backgroundColor: 'rgba(255, 255, 255, 0.12)',
+    borderTopLeftRadius: 18,
+    borderTopRightRadius: 18,
+  },
+  roleCardContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    minHeight: 56,
+    zIndex: 2,
+  },
+  roleCardIconContainer: {
+    marginRight: 16,
+  },
+  roleCardIcon: {
+    width: 55,
+    height: 55,
+    borderRadius: 26,
+    backgroundColor: 'rgba(255, 255, 255, 0.25)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2.5,
+    borderColor: 'rgba(255, 255, 255, 0.4)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.25,
+    shadowRadius: 6,
+    elevation: 5,
+  },
+  studentIconStyle: {
+    backgroundColor: 'rgba(255, 255, 255, 0.28)',
+    borderColor: 'rgba(255, 255, 255, 0.45)',
+  },
+  teacherIconStyle: {
+    backgroundColor: 'rgba(255, 255, 255, 0.28)',
+    borderColor: 'rgba(255, 255, 255, 0.45)',
+  },
+  roleCardTextContainer: {
+    flex: 1,
+    justifyContent: 'center',
+  },
+  roleCardTitle: {
+    fontSize: 20,
+    fontWeight: '800',
     color: 'white',
     marginBottom: 4,
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'Roboto',
+    letterSpacing: 0.6,
+    textShadowColor: 'rgba(0, 0, 0, 0.3)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
   },
-  statLabel: {
-    fontSize: 13,
-    color: 'rgba(255, 255, 255, 0.7)',
+  roleCardSubtitle: {
+    fontSize: 14,
+    color: 'rgba(255, 255, 255, 0.92)',
+    fontWeight: '600',
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'Roboto',
+    lineHeight: 18,
+    letterSpacing: 0.2,
   },
-  statDivider: {
-    width: 1,
-    height: 40,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+  roleCardArrowContainer: {
+    marginLeft: 16,
   },
+  roleCardArrow: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: 'rgba(255, 255, 255, 0.25)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2.5,
+    borderColor: 'rgba(255, 255, 255, 0.4)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.25,
+    shadowRadius: 6,
+    elevation: 4,
+  },
+  studentArrowStyle: {
+    backgroundColor: 'rgba(255, 255, 255, 0.28)',
+    borderColor: 'rgba(255, 255, 255, 0.45)',
+  },
+  teacherArrowStyle: {
+    backgroundColor: 'rgba(255, 255, 255, 0.28)',
+    borderColor: 'rgba(255, 255, 255, 0.45)',
+  },
+
+  // Footer
   footer: {
     alignItems: 'center',
-    paddingTop: 16,
+    paddingVertical: 8,
   },
   footerText: {
-    color: 'rgba(255, 255, 255, 0.5)',
-    fontSize: 13,
+    fontSize: 12,
+    color: 'rgba(255, 255, 255, 0.75)',
+    textAlign: 'center',
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'Roboto',
+    fontWeight: '500',
+    letterSpacing: 0.3,
   },
 });
 
