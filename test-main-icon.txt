@@ -1,0 +1,11 @@
+# Commands to test your new main app icon
+
+# 1. First, validate the app configuration
+npx expo-doctor
+
+# 2. Start the development server to see the icon in action
+npx expo start --clear
+
+# 3. To build and test on device
+# npx expo build:android
+# npx expo build:ios

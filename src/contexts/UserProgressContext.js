@@ -1,18 +1,13 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useAuth } from './AuthContext';
 import {
-  getStudentProgress,
-  getStudentProfile,
+  getStudentDocument,
+  updateStudentProgress,
   markLessonComplete,
   saveQuizResult,
-  addCoins as dbAddCoins,
-  awardBadge as dbAwardBadge,
-  awardSticker as dbAwardSticker,
   subscribeToStudentProgress,
-  subscribeToStudentProfile,
   updateLeaderboard,
-  initializeStudentProgress,
-  createStudentProfile
+  createStudentDocument
 } from '../services/database';
 
 const UserProgressContext = createContext();
@@ -26,10 +21,7 @@ export const useUserProgress = () => {
 };
 
 export const UserProgressProvider = ({ children }) => {
-  const { user } = useAuth();
-  
-  // Student Profile State
-  const [studentProfile, setStudentProfile] = useState(null);
+  const { user, userProfile, isStudent } = useAuth();
   
   // Student Progress State  
   const [userProgress, setUserProgress] = useState({
@@ -58,53 +50,45 @@ export const UserProgressProvider = ({ children }) => {
 
   // Load student data when user logs in
   useEffect(() => {
-    if (user?.uid) {
+    if (user?.uid && isStudent && userProfile) {
       loadStudentData();
       
       // Subscribe to real-time updates
       const unsubscribeProgress = subscribeToStudentProgress(user.uid, handleProgressUpdate);
-      const unsubscribeProfile = subscribeToStudentProfile(user.uid, handleProfileUpdate);
 
       return () => {
-        unsubscribeProgress();
-        unsubscribeProfile();
+        if (unsubscribeProgress) unsubscribeProgress();
       };
     } else {
       setIsLoading(false);
     }
-  }, [user]);
+  }, [user, userProfile, isStudent]);
 
   const loadStudentData = async () => {
-    if (!user?.uid) return;
+    if (!user?.uid || !isStudent) return;
 
     try {
       setIsLoading(true);
       
-      // Load profile
-      let profile = await getStudentProfile(user.uid);
-      if (!profile) {
-        // Create profile if doesn't exist
-        profile = await createStudentProfile(user.uid, {
-          name: user.displayName || 'Student',
+      // Load student document which includes both profile and progress
+      let studentDoc = await getStudentDocument(user.uid);
+      if (!studentDoc) {
+        // Create student document if doesn't exist
+        studentDoc = await createStudentDocument(user.uid, {
+          name: userProfile?.name || user.displayName || 'Student',
           email: user.email || '',
-          grade: 1,
-          avatar: '👦'
+          studentId: userProfile?.studentId || `STU${Date.now()}`
         });
       }
-      setStudentProfile(profile);
-
-      // Load progress
-      let progress = await getStudentProgress(user.uid);
-      if (!progress) {
-        // Initialize progress if doesn't exist
-        progress = await initializeStudentProgress(user.uid);
-      }
       
-      setUserProgress({
-        ...progress,
-        coins: progress.totalCoins || 0,
-        completedQuizzes: progress.completedQuizzes || []
-      });
+      // Set progress from the student document
+      if (studentDoc?.progress) {
+        setUserProgress({
+          ...studentDoc.progress,
+          coins: studentDoc.progress.totalCoins || 0,
+          completedQuizzes: studentDoc.progress.completedQuizzes || []
+        });
+      }
 
     } catch (error) {
       console.error('❌ Error loading student data:', error);
@@ -113,54 +97,52 @@ export const UserProgressProvider = ({ children }) => {
     }
   };
 
-  const handleProgressUpdate = (updatedProgress) => {
-    setUserProgress({
-      ...updatedProgress,
-      coins: updatedProgress.totalCoins || 0,
-      completedQuizzes: updatedProgress.completedQuizzes || []
-    });
-
-    // Update leaderboard when progress changes
-    if (studentProfile && user?.uid) {
-      updateLeaderboard(user.uid, {
-        name: studentProfile.name,
-        avatar: studentProfile.avatar,
-        grade: studentProfile.grade,
-        totalPoints: updatedProgress.totalPoints,
-        totalCoins: updatedProgress.totalCoins,
-        badges: updatedProgress.badges
+  const handleProgressUpdate = (updatedStudentDoc) => {
+    if (updatedStudentDoc?.progress) {
+      setUserProgress({
+        ...updatedStudentDoc.progress,
+        coins: updatedStudentDoc.progress.totalCoins || 0,
+        completedQuizzes: updatedStudentDoc.progress.completedQuizzes || []
       });
+
+      // Update leaderboard when progress changes
+      if (user?.uid) {
+        updateLeaderboard(user.uid, {
+          name: updatedStudentDoc.name,
+          avatar: updatedStudentDoc.profile?.avatar || '👦',
+          grade: updatedStudentDoc.profile?.grade || 1,
+          progress: updatedStudentDoc.progress
+        });
+      }
     }
   };
 
-  const handleProfileUpdate = (updatedProfile) => {
-    setStudentProfile(updatedProfile);
-  };
-
   const initializeUserProgress = async () => {
-    if (!user?.uid) return;
+    if (!user?.uid || !isStudent) return;
     
     try {
-      await initializeStudentProgress(user.uid);
+      // The progress is initialized when creating student document
+      await loadStudentData();
     } catch (error) {
       console.error('❌ Error initializing progress:', error);
     }
   };
 
   const updateProgress = async (updates) => {
-    // This method is kept for backwards compatibility
-    // Direct updates should use specific methods below
-    setUserProgress(prev => ({
-      ...prev,
-      ...updates
-    }));
+    if (!user?.uid || !isStudent) return;
+    
+    try {
+      await updateStudentProgress(user.uid, updates);
+    } catch (error) {
+      console.error('❌ Error updating progress:', error);
+    }
   };
 
   const completeLesson = async (subject, lessonId, points = 10, grade = 1, lessonTitle = '') => {
-    if (!user?.uid) return;
+    if (!user?.uid || !isStudent) return;
 
     try {
-      await markLessonComplete(user.uid, {
+      const result = await markLessonComplete(user.uid, {
         subject,
         grade,
         lessonId,
@@ -169,13 +151,15 @@ export const UserProgressProvider = ({ children }) => {
       });
 
       console.log(`✅ Lesson completed: ${lessonTitle}`);
+      return result;
     } catch (error) {
       console.error('❌ Error completing lesson:', error);
+      return { success: false };
     }
   };
 
   const completeQuiz = async (subject, quizId, score, maxScore, grade = 1, quizTitle = '') => {
-    if (!user?.uid) return;
+    if (!user?.uid || !isStudent) return;
 
     try {
       const correctAnswers = score;
@@ -214,10 +198,12 @@ export const UserProgressProvider = ({ children }) => {
   };
 
   const addCoins = async (amount, reason = 'Reward') => {
-    if (!user?.uid) return;
+    if (!user?.uid || !isStudent) return;
 
     try {
-      await dbAddCoins(user.uid, amount, reason);
+      await updateStudentProgress(user.uid, {
+        totalCoins: userProgress.totalCoins + amount
+      });
       console.log(`✅ Added ${amount} coins`);
     } catch (error) {
       console.error('❌ Error adding coins:', error);
@@ -225,10 +211,13 @@ export const UserProgressProvider = ({ children }) => {
   };
 
   const addSticker = async (stickerData) => {
-    if (!user?.uid) return;
+    if (!user?.uid || !isStudent) return;
 
     try {
-      await dbAwardSticker(user.uid, stickerData);
+      const currentStickers = userProgress.stickers || [];
+      await updateStudentProgress(user.uid, {
+        stickers: [...currentStickers, { ...stickerData, earnedAt: new Date().toISOString() }]
+      });
       console.log(`✅ Sticker awarded: ${stickerData.name}`);
     } catch (error) {
       console.error('❌ Error adding sticker:', error);
@@ -236,10 +225,13 @@ export const UserProgressProvider = ({ children }) => {
   };
 
   const addBadge = async (badgeData) => {
-    if (!user?.uid) return;
+    if (!user?.uid || !isStudent) return;
 
     try {
-      await dbAwardBadge(user.uid, badgeData);
+      const currentBadges = userProgress.badges || [];
+      await updateStudentProgress(user.uid, {
+        badges: [...currentBadges, { ...badgeData, earnedAt: new Date().toISOString() }]
+      });
       console.log(`✅ Badge awarded: ${badgeData.name}`);
     } catch (error) {
       console.error('❌ Error adding badge:', error);
@@ -247,25 +239,26 @@ export const UserProgressProvider = ({ children }) => {
   };
 
   const addAchievement = async (achievement) => {
-    if (!user?.uid) return;
+    if (!user?.uid || !isStudent) return;
 
-    const newAchievements = [...(userProgress.achievements || [])];
-    if (!newAchievements.find(a => a.id === achievement.id)) {
-      newAchievements.push({
-        ...achievement,
-        unlockedAt: new Date().toISOString(),
-      });
-      
-      setUserProgress(prev => ({
-        ...prev,
-        achievements: newAchievements
-      }));
+    try {
+      const currentAchievements = userProgress.achievements || [];
+      if (!currentAchievements.find(a => a.id === achievement.id)) {
+        await updateStudentProgress(user.uid, {
+          achievements: [...currentAchievements, {
+            ...achievement,
+            unlockedAt: new Date().toISOString(),
+          }]
+        });
+        console.log(`✅ Achievement unlocked: ${achievement.name}`);
+      }
+    } catch (error) {
+      console.error('❌ Error adding achievement:', error);
     }
   };
 
   const value = {
     userProgress,
-    studentProfile,
     isLoading,
     updateProgress,
     completeLesson,
@@ -274,6 +267,7 @@ export const UserProgressProvider = ({ children }) => {
     addCoins,
     addSticker,
     addBadge,
+    initializeUserProgress,
   };
 
   return (

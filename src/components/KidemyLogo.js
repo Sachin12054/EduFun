@@ -1,7 +1,7 @@
 import React from 'react';
 import { Image, StyleSheet, View } from 'react-native';
 
-const EduFunLogo = ({ 
+const KidemyLogo = ({ 
   size = 100, 
   style = {},
   resizeMode = 'contain',
@@ -72,4 +72,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default EduFunLogo;
+export default KidemyLogo;

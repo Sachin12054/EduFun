@@ -1,7 +1,7 @@
 @echo off
 echo.
 echo ====================================================
-echo   EduFun Logo Conversion Helper - Final Step
+echo   Kidemy Logo Conversion Helper - Final Step
 echo ====================================================
 echo.
 

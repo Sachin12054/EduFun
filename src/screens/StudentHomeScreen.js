@@ -20,8 +20,8 @@ import { useUserProgress } from '../contexts/UserProgressContext';
 
 const { width } = Dimensions.get('window');
 
-const HomeScreen = ({ navigation }) => {
-  const { userProfile } = useAuth();
+const StudentHomeScreen = ({ navigation }) => {
+  const { userProfile, isStudent } = useAuth();
   const { theme } = useTheme();
   const { userProgress, isLoading } = useUserProgress();
   const [refreshing, setRefreshing] = useState(false);
@@ -29,6 +29,12 @@ const HomeScreen = ({ navigation }) => {
   const [slideAnim] = useState(new Animated.Value(50));
 
   useEffect(() => {
+    // Redirect if not a student
+    if (userProfile && !isStudent) {
+      navigation.replace('TeacherDashboard');
+      return;
+    }
+
     Animated.parallel([
       Animated.timing(fadeAnim, {
         toValue: 1,
@@ -41,7 +47,7 @@ const HomeScreen = ({ navigation }) => {
         useNativeDriver: true,
       }),
     ]).start();
-  }, []);
+  }, [userProfile, isStudent]);
 
   const onRefresh = React.useCallback(() => {
     setRefreshing(true);
@@ -74,7 +80,7 @@ const HomeScreen = ({ navigation }) => {
       gradient: ['#FF6B6B', '#FF8E53'],
       description: 'Numbers & problem solving',
       lessons: 24,
-      completed: userProgress.subjectProgress?.maths?.lessonsCompleted || 0,
+      completed: userProgress?.progress?.subjectProgress?.maths?.lessonsCompleted || 0,
       difficulty: 'Intermediate',
       trending: true,
     },
@@ -86,7 +92,7 @@ const HomeScreen = ({ navigation }) => {
       gradient: ['#4ECDC4', '#44A08D'],
       description: 'Explore the world around us',
       lessons: 20,
-      completed: userProgress.subjectProgress?.science?.lessonsCompleted || 0,
+      completed: userProgress?.progress?.subjectProgress?.science?.lessonsCompleted || 0,
       difficulty: 'Beginner',
       trending: false,
     },
@@ -98,7 +104,7 @@ const HomeScreen = ({ navigation }) => {
       gradient: ['#45B7D1', '#4FACFE'],
       description: 'Language & literature',
       lessons: 18,
-      completed: userProgress.subjectProgress?.english?.lessonsCompleted || 0,
+      completed: userProgress?.progress?.subjectProgress?.english?.lessonsCompleted || 0,
       difficulty: 'Beginner',
       trending: false,
     },
@@ -110,7 +116,7 @@ const HomeScreen = ({ navigation }) => {
       gradient: ['#96CEB4', '#FFEAA7'],
       description: 'Learn about community',
       lessons: 16,
-      completed: userProgress.subjectProgress?.social?.lessonsCompleted || 0,
+      completed: userProgress?.progress?.subjectProgress?.social?.lessonsCompleted || 0,
       difficulty: 'Intermediate',
       trending: false,
     },
@@ -122,7 +128,7 @@ const HomeScreen = ({ navigation }) => {
       gradient: ['#FECA57', '#FD79A8'],
       description: 'Learn about the world',
       lessons: 14,
-      completed: userProgress.subjectProgress?.gk?.lessonsCompleted || 0,
+      completed: userProgress?.progress?.subjectProgress?.gk?.lessonsCompleted || 0,
       difficulty: 'Beginner',
       trending: true,
     },
@@ -151,7 +157,7 @@ const HomeScreen = ({ navigation }) => {
       id: 2,
       title: 'Daily Streak',
       description: 'Keep your learning streak alive',
-      progress: userProgress.currentStreak || 0,
+      progress: userProgress?.progress?.currentStreak || 0,
       total: 7,
       color: '#f093fb',
       icon: 'flame',
@@ -295,6 +301,11 @@ const HomeScreen = ({ navigation }) => {
     );
   };
 
+  // Don't render if not authenticated or not a student
+  if (!userProfile || !isStudent) {
+    return null;
+  }
+
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
       {/* Enhanced Header */}
@@ -322,7 +333,7 @@ const HomeScreen = ({ navigation }) => {
           </TouchableOpacity>
           
           <View style={styles.headerCenter}>
-            <Text style={styles.headerTitle}>Kidemy</Text>
+            <Text style={styles.headerTitle}>Kidemy Student</Text>
             <Text style={styles.headerSubtitle}>Learning Made Fun</Text>
           </View>
           
@@ -343,7 +354,7 @@ const HomeScreen = ({ navigation }) => {
             >
               <View style={styles.profileCircle}>
                 <Text style={styles.profileText}>
-                  {userProfile?.firstName?.charAt(0) || 'S'}
+                  {userProfile?.name?.charAt(0) || userProfile?.profile?.avatar || 'S'}
                 </Text>
               </View>
             </TouchableOpacity>
@@ -370,10 +381,13 @@ const HomeScreen = ({ navigation }) => {
               <View>
                 <Text style={styles.welcomeGreeting}>{getGreeting()},</Text>
                 <Text style={styles.welcomeName}>
-                  {userProfile?.firstName || 'Student'}! 👋
+                  {userProfile?.name || 'Student'}! 👋
                 </Text>
                 <Text style={styles.welcomeSubtext}>
                   Ready to continue your learning journey?
+                </Text>
+                <Text style={styles.studentIdText}>
+                  Student ID: {userProfile?.studentId || 'Not assigned'}
                 </Text>
               </View>
               <View style={styles.welcomeIconContainer}>
@@ -435,25 +449,25 @@ const HomeScreen = ({ navigation }) => {
             <View style={styles.statsContainer}>
               <StatCard 
                 title="Total Points" 
-                value={userProgress.totalPoints || 0} 
+                value={userProgress?.progress?.totalPoints || 0} 
                 color="#FF6B6B"
                 icon="star"
               />
               <StatCard 
                 title="Achievements" 
-                value={userProgress.achievements?.length || 0} 
+                value={userProgress?.progress?.badges?.length || 0} 
                 color="#4ECDC4"
                 icon="trophy"
               />
               <StatCard 
                 title="Completed" 
-                value={userProgress.completedLessons?.length || 0} 
+                value={userProgress?.progress?.completedLessons?.length || 0} 
                 color="#45B7D1"
                 icon="checkmark-circle"
               />
               <StatCard 
                 title="Day Streak" 
-                value={userProgress.currentStreak || 0} 
+                value={userProgress?.progress?.currentStreak || 0} 
                 color="#FECA57"
                 icon="flame"
               />
@@ -606,6 +620,12 @@ const styles = StyleSheet.create({
     color: 'rgba(255, 255, 255, 0.85)',
     lineHeight: 20,
     maxWidth: '80%',
+  },
+  studentIdText: {
+    fontSize: 12,
+    color: 'rgba(255, 255, 255, 0.75)',
+    marginTop: 4,
+    fontWeight: '500',
   },
   welcomeIconContainer: {
     opacity: 0.6,
@@ -896,4 +916,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default HomeScreen;
+export default StudentHomeScreen;

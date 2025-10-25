@@ -157,7 +157,7 @@ const ProfileScreen = () => {
             
             <TouchableOpacity 
               style={styles.actionButton}
-              onPress={() => Alert.alert('About', 'EduFun - Gamified Learning Platform v1.0')}
+              onPress={() => Alert.alert('About', 'Kidemy - Gamified Learning Platform v1.0')}
             >
               <Text style={styles.actionButtonIcon}>ℹ️</Text>
               <Text style={styles.actionButtonText}>About</Text>

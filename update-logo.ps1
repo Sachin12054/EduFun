@@ -1,6 +1,6 @@
-# PowerShell script to update app icons with the new EduFun logo
+# PowerShell script to update app icons with the new Kidemy logo
 
-Write-Host "EduFun Logo Update Script" -ForegroundColor Green
+Write-Host "Kidemy Logo Update Script" -ForegroundColor Green
 Write-Host "=========================" -ForegroundColor Green
 
 # Check if the logo image exists

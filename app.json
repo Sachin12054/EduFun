@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "EduFun Mobile",
+    "name": "Kidemy",
     "slug": "edufun-mobile",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -14,10 +14,10 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.edufun.mobile"
+      "bundleIdentifier": "com.kidemy.mobile"
     },
     "android": {
-      "package": "com.edufun.mobile",
+      "package": "com.kidemy.mobile",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"

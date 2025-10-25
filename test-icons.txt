@@ -1,0 +1,4 @@
+echo "After creating the new icon files, run these commands to test:"
+echo ""
+echo "npx expo-doctor"
+echo "expo start --clear"

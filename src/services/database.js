@@ -16,171 +16,152 @@ import {
   getDocs
 } from 'firebase/firestore';
 
-// ==================== STUDENT PROFILE OPERATIONS ====================
+// ==================== UTILITY FUNCTIONS ====================
 
 /**
- * Create a new student profile
- * Path: Students/{studentId}/Profile
+ * Generate a unique student ID in format STU01-STD{NN}
  */
-export const createStudentProfile = async (studentId, profileData) => {
+const generateStudentId = async () => {
   try {
-    const profileRef = doc(db, 'Students', studentId, 'Profile', 'details');
+    // Get all students to determine the next number
+    const studentsQuery = query(collection(db, 'students'), orderBy('createdAt', 'desc'), limit(1));
+    const querySnapshot = await getDocs(studentsQuery);
     
-    const studentProfile = {
-      studentId,
-      name: profileData.name || '',
-      email: profileData.email || '',
-      grade: profileData.grade || 1,
-      avatar: profileData.avatar || '👦',
-      dateOfBirth: profileData.dateOfBirth || null,
-      parentName: profileData.parentName || '',
-      parentContact: profileData.parentContact || '',
-      schoolName: profileData.schoolName || '',
-      rollNumber: profileData.rollNumber || '',
+    let nextNumber = 1;
+    if (!querySnapshot.empty) {
+      const lastStudent = querySnapshot.docs[0].data();
+      if (lastStudent.studentId && lastStudent.studentId.includes('STU01-STD')) {
+        const lastNumber = parseInt(lastStudent.studentId.split('STU01-STD')[1]) || 0;
+        nextNumber = lastNumber + 1;
+      }
+    }
+    
+    // Format as STU01-STD{NN} with zero padding
+    const formattedNumber = nextNumber.toString().padStart(2, '0');
+    return `STU01-STD${formattedNumber}`;
+  } catch (error) {
+    console.error('Error generating student ID:', error);
+    // Fallback to timestamp-based ID
+    return `STU01-STD${Date.now().toString().slice(-2)}`;
+  }
+};
+
+// ==================== STUDENT OPERATIONS ====================
+
+/**
+ * Create a new student document
+ * Path: students/{studentId}
+ */
+export const createStudentDocument = async (studentId, studentData) => {
+  try {
+    const studentRef = doc(db, 'students', studentId);
+    
+    // Generate a unique student ID if not provided
+    const generatedStudentId = studentData.studentId || await generateStudentId();
+    
+    const student = {
+      uid: studentId,
+      name: studentData.name || '',
+      email: studentData.email || '',
+      studentId: generatedStudentId,
+      userType: 'student',
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
-      isActive: true
+      isActive: true,
+      profile: {
+        avatar: '👦',
+        grade: studentData.grade || null, // Don't set default grade - let user select
+        dateOfBirth: null,
+        parentName: '',
+        parentContact: '',
+        schoolName: '',
+        rollNumber: '',
+      },
+      progress: {
+        totalPoints: 0,
+        totalCoins: 0,
+        level: 1,
+        completedLessons: [],
+        completedCourses: 0,
+        badges: [],
+        subjectProgress: {
+          english: { lessonsCompleted: 0, quizzesCompleted: 0, points: 0 },
+          maths: { lessonsCompleted: 0, quizzesCompleted: 0, points: 0 },
+          science: { lessonsCompleted: 0, quizzesCompleted: 0, points: 0 },
+          social: { lessonsCompleted: 0, quizzesCompleted: 0, points: 0 },
+          gk: { lessonsCompleted: 0, quizzesCompleted: 0, points: 0 }
+        },
+        lastActivityDate: serverTimestamp(),
+      }
     };
 
-    await setDoc(profileRef, studentProfile);
-    console.log('✅ Student profile created successfully');
-    return studentProfile;
+    await setDoc(studentRef, student);
+    console.log('✅ Student document created successfully');
+    return student;
   } catch (error) {
-    console.error('❌ Error creating student profile:', error);
+    console.error('❌ Error creating student document:', error);
     throw error;
   }
 };
 
 /**
- * Get student profile
- * Path: Students/{studentId}/Profile/details
+ * Get student document
  */
-export const getStudentProfile = async (studentId) => {
+export const getStudentDocument = async (studentId) => {
   try {
-    const profileRef = doc(db, 'Students', studentId, 'Profile', 'details');
-    const profileSnap = await getDoc(profileRef);
+    const studentRef = doc(db, 'students', studentId);
+    const studentSnap = await getDoc(studentRef);
     
-    if (profileSnap.exists()) {
-      return profileSnap.data();
+    if (studentSnap.exists()) {
+      return studentSnap.data();
     } else {
-      console.log('No profile found for student:', studentId);
+      console.log('No student found:', studentId);
       return null;
     }
   } catch (error) {
-    console.error('❌ Error getting student profile:', error);
+    console.error('❌ Error getting student document:', error);
     throw error;
   }
 };
 
 /**
- * Update student profile
+ * Update student progress
  */
-export const updateStudentProfile = async (studentId, updates) => {
+export const updateStudentProgress = async (studentId, progressUpdates) => {
   try {
-    const profileRef = doc(db, 'Students', studentId, 'Profile', 'details');
+    const studentRef = doc(db, 'students', studentId);
     
-    const updateData = {
-      ...updates,
-      updatedAt: serverTimestamp()
-    };
+    const updateData = {};
+    Object.keys(progressUpdates).forEach(key => {
+      updateData[`progress.${key}`] = progressUpdates[key];
+    });
+    updateData.updatedAt = serverTimestamp();
 
-    await updateDoc(profileRef, updateData);
-    console.log('✅ Student profile updated successfully');
+    await updateDoc(studentRef, updateData);
+    console.log('✅ Student progress updated successfully');
     return updateData;
   } catch (error) {
-    console.error('❌ Error updating student profile:', error);
-    throw error;
-  }
-};
-
-// ==================== STUDENT PROGRESS OPERATIONS ====================
-
-/**
- * Initialize student progress
- * Path: Students/{studentId}/Progress/stats
- */
-export const initializeStudentProgress = async (studentId) => {
-  try {
-    const progressRef = doc(db, 'Students', studentId, 'Progress', 'stats');
-    
-    const initialProgress = {
-      studentId,
-      totalPoints: 0,
-      totalCoins: 0,
-      level: 1,
-      completedLessons: [],
-      quizResults: {},
-      badges: [],
-      stickers: [],
-      subjectProgress: {
-        english: { lessonsCompleted: 0, quizzesCompleted: 0, points: 0 },
-        maths: { lessonsCompleted: 0, quizzesCompleted: 0, points: 0 },
-        science: { lessonsCompleted: 0, quizzesCompleted: 0, points: 0 },
-        social: { lessonsCompleted: 0, quizzesCompleted: 0, points: 0 },
-        gk: { lessonsCompleted: 0, quizzesCompleted: 0, points: 0 }
-      },
-      lastActivityDate: serverTimestamp(),
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp()
-    };
-
-    await setDoc(progressRef, initialProgress);
-    console.log('✅ Student progress initialized');
-    return initialProgress;
-  } catch (error) {
-    console.error('❌ Error initializing student progress:', error);
+    console.error('❌ Error updating student progress:', error);
     throw error;
   }
 };
 
 /**
- * Get student progress
- */
-export const getStudentProgress = async (studentId) => {
-  try {
-    const progressRef = doc(db, 'Students', studentId, 'Progress', 'stats');
-    const progressSnap = await getDoc(progressRef);
-    
-    if (progressSnap.exists()) {
-      return progressSnap.data();
-    } else {
-      console.log('No progress found, initializing...');
-      return await initializeStudentProgress(studentId);
-    }
-  } catch (error) {
-    console.error('❌ Error getting student progress:', error);
-    throw error;
-  }
-};
-
-/**
- * Update lesson completion
+ * Mark lesson as completed for student
  */
 export const markLessonComplete = async (studentId, lessonData) => {
   try {
-    const progressRef = doc(db, 'Students', studentId, 'Progress', 'stats');
-    // Fixed: Match the format used in SubjectScreen
+    const studentRef = doc(db, 'students', studentId);
     const lessonKey = `${lessonData.subject}_grade${lessonData.grade}_lesson_${lessonData.lessonId}`;
     
-    await updateDoc(progressRef, {
-      completedLessons: arrayUnion(lessonKey),
-      totalPoints: increment(lessonData.points || 10),
-      totalCoins: increment(5),
-      [`subjectProgress.${lessonData.subject}.lessonsCompleted`]: increment(1),
-      [`subjectProgress.${lessonData.subject}.points`]: increment(lessonData.points || 10),
-      lastActivityDate: serverTimestamp(),
+    await updateDoc(studentRef, {
+      'progress.completedLessons': arrayUnion(lessonKey),
+      'progress.totalPoints': increment(lessonData.points || 10),
+      'progress.totalCoins': increment(5),
+      [`progress.subjectProgress.${lessonData.subject}.lessonsCompleted`]: increment(1),
+      [`progress.subjectProgress.${lessonData.subject}.points`]: increment(lessonData.points || 10),
+      'progress.lastActivityDate': serverTimestamp(),
       updatedAt: serverTimestamp()
-    });
-
-    // Log activity
-    await logLearningActivity(studentId, {
-      type: 'lesson_completed',
-      subject: lessonData.subject,
-      grade: lessonData.grade,
-      lessonId: lessonData.lessonId,
-      lessonTitle: lessonData.lessonTitle,
-      pointsEarned: lessonData.points || 10,
-      coinsEarned: 5
     });
 
     console.log('✅ Lesson marked complete');
@@ -192,12 +173,11 @@ export const markLessonComplete = async (studentId, lessonData) => {
 };
 
 /**
- * Update quiz completion
+ * Save quiz result for student
  */
 export const saveQuizResult = async (studentId, quizData) => {
   try {
-    const progressRef = doc(db, 'Students', studentId, 'Progress', 'stats');
-    // Fixed: Match the format used in SubjectScreen
+    const studentRef = doc(db, 'students', studentId);
     const quizKey = `${quizData.subject}_grade${quizData.grade}_quiz_${quizData.quizId}`;
     
     const quizResult = {
@@ -209,28 +189,14 @@ export const saveQuizResult = async (studentId, quizData) => {
       completedAt: serverTimestamp()
     };
 
-    await updateDoc(progressRef, {
-      [`quizResults.${quizKey}`]: quizResult,
-      totalPoints: increment(quizData.pointsEarned),
-      totalCoins: increment(quizData.coinsEarned),
-      [`subjectProgress.${quizData.subject}.quizzesCompleted`]: increment(1),
-      [`subjectProgress.${quizData.subject}.points`]: increment(quizData.pointsEarned),
-      lastActivityDate: serverTimestamp(),
+    await updateDoc(studentRef, {
+      [`progress.quizResults.${quizKey}`]: quizResult,
+      'progress.totalPoints': increment(quizData.pointsEarned),
+      'progress.totalCoins': increment(quizData.coinsEarned),
+      [`progress.subjectProgress.${quizData.subject}.quizzesCompleted`]: increment(1),
+      [`progress.subjectProgress.${quizData.subject}.points`]: increment(quizData.pointsEarned),
+      'progress.lastActivityDate': serverTimestamp(),
       updatedAt: serverTimestamp()
-    });
-
-    // Log activity
-    await logLearningActivity(studentId, {
-      type: 'quiz_completed',
-      subject: quizData.subject,
-      grade: quizData.grade,
-      quizId: quizData.quizId,
-      quizTitle: quizData.quizTitle,
-      score: quizData.score,
-      correctAnswers: quizData.correctAnswers,
-      totalQuestions: quizData.totalQuestions,
-      pointsEarned: quizData.pointsEarned,
-      coinsEarned: quizData.coinsEarned
     });
 
     console.log('✅ Quiz result saved');
@@ -241,214 +207,160 @@ export const saveQuizResult = async (studentId, quizData) => {
   }
 };
 
+// ==================== TEACHER OPERATIONS ====================
+
 /**
- * Add coins to student
+ * Create a new teacher document
+ * Path: teachers/{teacherId}
  */
-export const addCoins = async (studentId, amount, reason = 'Reward') => {
+export const createTeacherDocument = async (teacherId, teacherData) => {
   try {
-    const progressRef = doc(db, 'Students', studentId, 'Progress', 'stats');
+    const teacherRef = doc(db, 'teachers', teacherId);
     
-    await updateDoc(progressRef, {
-      totalCoins: increment(amount),
-      updatedAt: serverTimestamp()
-    });
+    const teacher = {
+      uid: teacherId,
+      name: teacherData.name || '',
+      email: teacherData.email || '',
+      employeeId: teacherData.employeeId || `TEA${Date.now()}`,
+      department: teacherData.department || '',
+      qualification: teacherData.qualification || '',
+      userType: 'teacher',
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+      isActive: true,
+      profile: {
+        avatar: '👩‍🏫',
+        bio: '',
+        experience: '',
+        expertise: [],
+        contactNumber: '',
+      },
+      teachingData: {
+        coursesCreated: 0,
+        studentsEnrolled: 0,
+        totalRating: 0,
+        reviews: [],
+        subjects: teacherData.department ? [teacherData.department.toLowerCase()] : [],
+        achievements: [],
+        totalLessonsCreated: 0,
+        totalQuizzesCreated: 0,
+      }
+    };
 
-    // Log transaction
-    await logCoinTransaction(studentId, {
-      amount,
-      reason,
-      type: 'earned'
-    });
-
-    console.log(`✅ Added ${amount} coins`);
-    return { success: true, coinsAdded: amount };
+    await setDoc(teacherRef, teacher);
+    console.log('✅ Teacher document created successfully');
+    return teacher;
   } catch (error) {
-    console.error('❌ Error adding coins:', error);
+    console.error('❌ Error creating teacher document:', error);
     throw error;
   }
 };
 
 /**
- * Add badge to student
+ * Get teacher document
  */
-export const awardBadge = async (studentId, badgeData) => {
+export const getTeacherDocument = async (teacherId) => {
   try {
-    const progressRef = doc(db, 'Students', studentId, 'Progress', 'stats');
+    const teacherRef = doc(db, 'teachers', teacherId);
+    const teacherSnap = await getDoc(teacherRef);
     
-    const badge = {
-      id: badgeData.id,
-      name: badgeData.name,
-      icon: badgeData.icon,
-      earnedAt: serverTimestamp()
-    };
-
-    await updateDoc(progressRef, {
-      badges: arrayUnion(badge),
-      updatedAt: serverTimestamp()
-    });
-
-    // Log activity
-    await logLearningActivity(studentId, {
-      type: 'badge_earned',
-      badgeId: badgeData.id,
-      badgeName: badgeData.name,
-      badgeIcon: badgeData.icon
-    });
-
-    console.log(`✅ Badge awarded: ${badgeData.name}`);
-    return { success: true, badge };
+    if (teacherSnap.exists()) {
+      return teacherSnap.data();
+    } else {
+      console.log('No teacher found:', teacherId);
+      return null;
+    }
   } catch (error) {
-    console.error('❌ Error awarding badge:', error);
+    console.error('❌ Error getting teacher document:', error);
     throw error;
   }
 };
 
 /**
- * Add sticker to student collection
+ * Update teacher data
  */
-export const awardSticker = async (studentId, stickerData) => {
+export const updateTeacherData = async (teacherId, dataUpdates) => {
   try {
-    const progressRef = doc(db, 'Students', studentId, 'Progress', 'stats');
+    const teacherRef = doc(db, 'teachers', teacherId);
     
-    const sticker = {
-      id: stickerData.id,
-      name: stickerData.name,
-      emoji: stickerData.emoji,
-      earnedAt: serverTimestamp()
-    };
-
-    await updateDoc(progressRef, {
-      stickers: arrayUnion(sticker),
-      updatedAt: serverTimestamp()
+    const updateData = {};
+    Object.keys(dataUpdates).forEach(key => {
+      updateData[`teachingData.${key}`] = dataUpdates[key];
     });
+    updateData.updatedAt = serverTimestamp();
 
-    // Log activity
-    await logLearningActivity(studentId, {
-      type: 'sticker_earned',
-      stickerId: stickerData.id,
-      stickerName: stickerData.name,
-      stickerEmoji: stickerData.emoji
-    });
-
-    console.log(`✅ Sticker awarded: ${stickerData.name}`);
-    return { success: true, sticker };
+    await updateDoc(teacherRef, updateData);
+    console.log('✅ Teacher data updated successfully');
+    return updateData;
   } catch (error) {
-    console.error('❌ Error awarding sticker:', error);
+    console.error('❌ Error updating teacher data:', error);
     throw error;
   }
 };
 
-// ==================== LEARNING ACTIVITY LOG ====================
+// ==================== LEGACY COMPATIBILITY ====================
 
-/**
- * Log learning activity
- * Path: Students/{studentId}/LearningHistory/{activityId}
- */
-export const logLearningActivity = async (studentId, activityData) => {
+// Keep old function names for backward compatibility
+export const createStudentProfile = createStudentDocument;
+export const getStudentProfile = getStudentDocument;
+export const updateStudentProfile = async (studentId, updates) => {
   try {
-    const activityRef = doc(collection(db, 'Students', studentId, 'LearningHistory'));
+    const profileUpdates = {};
     
-    const activity = {
-      ...activityData,
-      timestamp: serverTimestamp(),
-      date: new Date().toISOString().split('T')[0] // YYYY-MM-DD format
-    };
-
-    await setDoc(activityRef, activity);
-    console.log('✅ Activity logged');
-  } catch (error) {
-    console.error('❌ Error logging activity:', error);
-    // Don't throw - logging is not critical
-  }
-};
-
-/**
- * Get learning history
- */
-export const getLearningHistory = async (studentId, limitCount = 20) => {
-  try {
-    const historyRef = collection(db, 'Students', studentId, 'LearningHistory');
-    const q = query(historyRef, orderBy('timestamp', 'desc'), limit(limitCount));
+    // Handle grade specially (it's a top-level field in profile)
+    if (updates.grade !== undefined) {
+      profileUpdates['profile.grade'] = updates.grade;
+    }
+    if (updates.gradeTitle !== undefined) {
+      profileUpdates['profile.gradeTitle'] = updates.gradeTitle;
+    }
     
-    const querySnapshot = await getDocs(q);
-    const activities = [];
-    
-    querySnapshot.forEach((doc) => {
-      activities.push({ id: doc.id, ...doc.data() });
+    // Handle other profile updates
+    Object.keys(updates).forEach(key => {
+      if (key !== 'grade' && key !== 'gradeTitle') {
+        profileUpdates[`profile.${key}`] = updates[key];
+      }
     });
-
-    return activities;
+    
+    profileUpdates.updatedAt = serverTimestamp();
+    
+    await updateDoc(doc(db, 'students', studentId), profileUpdates);
+    console.log('✅ Student profile updated successfully');
+    return true;
   } catch (error) {
-    console.error('❌ Error getting learning history:', error);
-    return [];
+    console.error('❌ Error updating student profile:', error);
+    throw error;
   }
 };
 
-// ==================== COIN TRANSACTIONS ====================
-
-/**
- * Log coin transaction
- * Path: Students/{studentId}/CoinTransactions/{transactionId}
- */
-export const logCoinTransaction = async (studentId, transactionData) => {
-  try {
-    const transactionRef = doc(collection(db, 'Students', studentId, 'CoinTransactions'));
-    
-    const transaction = {
-      amount: transactionData.amount,
-      reason: transactionData.reason,
-      type: transactionData.type, // 'earned' or 'spent'
-      timestamp: serverTimestamp(),
-      date: new Date().toISOString().split('T')[0]
-    };
-
-    await setDoc(transactionRef, transaction);
-    console.log('✅ Coin transaction logged');
-  } catch (error) {
-    console.error('❌ Error logging transaction:', error);
-  }
+export const getStudentProgress = async (studentId) => {
+  const student = await getStudentDocument(studentId);
+  return student?.progress || null;
 };
 
-/**
- * Get coin transaction history
- */
-export const getCoinTransactions = async (studentId, limitCount = 50) => {
-  try {
-    const transactionsRef = collection(db, 'Students', studentId, 'CoinTransactions');
-    const q = query(transactionsRef, orderBy('timestamp', 'desc'), limit(limitCount));
-    
-    const querySnapshot = await getDocs(q);
-    const transactions = [];
-    
-    querySnapshot.forEach((doc) => {
-      transactions.push({ id: doc.id, ...doc.data() });
-    });
-
-    return transactions;
-  } catch (error) {
-    console.error('❌ Error getting transactions:', error);
-    return [];
-  }
+export const initializeStudentProgress = async (studentId) => {
+  // Progress is initialized when creating student document
+  const student = await getStudentDocument(studentId);
+  return student?.progress || null;
 };
 
 // ==================== LEADERBOARD ====================
 
 /**
  * Update leaderboard entry
- * Path: Leaderboard/{grade}/Students/{studentId}
  */
 export const updateLeaderboard = async (studentId, studentData) => {
   try {
-    const leaderboardRef = doc(db, 'Leaderboard', `grade${studentData.grade}`, 'Students', studentId);
+    const leaderboardRef = doc(db, 'leaderboard', studentId);
     
     const leaderboardEntry = {
       studentId,
       name: studentData.name,
-      avatar: studentData.avatar || '👦',
-      totalPoints: studentData.totalPoints,
-      totalCoins: studentData.totalCoins,
-      badges: studentData.badges?.length || 0,
-      grade: studentData.grade,
+      avatar: studentData.profile?.avatar || '👦',
+      totalPoints: studentData.progress?.totalPoints || 0,
+      totalCoins: studentData.progress?.totalCoins || 0,
+      badges: studentData.progress?.badges?.length || 0,
+      grade: studentData.profile?.grade || 1,
       updatedAt: serverTimestamp()
     };
 
@@ -460,12 +372,16 @@ export const updateLeaderboard = async (studentId, studentData) => {
 };
 
 /**
- * Get leaderboard for a grade
+ * Get leaderboard
  */
-export const getLeaderboard = async (grade, limitCount = 10) => {
+export const getLeaderboard = async (grade = null, limitCount = 10) => {
   try {
-    const leaderboardRef = collection(db, 'Leaderboard', `grade${grade}`, 'Students');
-    const q = query(leaderboardRef, orderBy('totalPoints', 'desc'), limit(limitCount));
+    const leaderboardRef = collection(db, 'leaderboard');
+    let q = query(leaderboardRef, orderBy('totalPoints', 'desc'), limit(limitCount));
+    
+    if (grade) {
+      q = query(leaderboardRef, where('grade', '==', grade), orderBy('totalPoints', 'desc'), limit(limitCount));
+    }
     
     const querySnapshot = await getDocs(q);
     const leaderboard = [];
@@ -488,60 +404,40 @@ export const getLeaderboard = async (grade, limitCount = 10) => {
 // ==================== REAL-TIME LISTENERS ====================
 
 /**
- * Listen to student progress changes
+ * Listen to student changes
  */
 export const subscribeToStudentProgress = (studentId, callback) => {
-  const progressRef = doc(db, 'Students', studentId, 'Progress', 'stats');
+  const studentRef = doc(db, 'students', studentId);
   
-  const unsubscribe = onSnapshot(progressRef, (doc) => {
+  const unsubscribe = onSnapshot(studentRef, (doc) => {
     if (doc.exists()) {
-      callback(doc.data());
+      callback(doc.data().progress);
     }
   }, (error) => {
-    console.error('❌ Error in progress listener:', error);
+    console.error('❌ Error in student listener:', error);
   });
 
   return unsubscribe;
 };
 
 /**
- * Listen to student profile changes
+ * Listen to teacher changes
  */
-export const subscribeToStudentProfile = (studentId, callback) => {
-  const profileRef = doc(db, 'Students', studentId, 'Profile', 'details');
+export const subscribeToTeacherData = (teacherId, callback) => {
+  const teacherRef = doc(db, 'teachers', teacherId);
   
-  const unsubscribe = onSnapshot(profileRef, (doc) => {
+  const unsubscribe = onSnapshot(teacherRef, (doc) => {
     if (doc.exists()) {
       callback(doc.data());
     }
   }, (error) => {
-    console.error('❌ Error in profile listener:', error);
+    console.error('❌ Error in teacher listener:', error);
   });
 
   return unsubscribe;
 };
 
 // ==================== UTILITY FUNCTIONS ====================
-
-/**
- * Get complete student data
- */
-export const getCompleteStudentData = async (studentId) => {
-  try {
-    const [profile, progress] = await Promise.all([
-      getStudentProfile(studentId),
-      getStudentProgress(studentId)
-    ]);
-
-    return {
-      profile,
-      progress
-    };
-  } catch (error) {
-    console.error('❌ Error getting complete student data:', error);
-    throw error;
-  }
-};
 
 /**
  * Check if lesson is completed

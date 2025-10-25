@@ -1646,7 +1646,7 @@ export const SUBJECTS_DATA = {
   gk: {
     id: 'gk',
     name: 'General Knowledge',
-    icon: 'bulb',
+    icon: 'lightbulb',
     color: '#A8E6CF',
     description: 'Learn about the world around us',
     grades: {

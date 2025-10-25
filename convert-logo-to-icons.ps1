@@ -6,7 +6,7 @@ param(
     [string]$OutputDir = "assets"
 )
 
-Write-Host "EduFun Logo to App Icons Converter" -ForegroundColor Green
+Write-Host "Kidemy Logo to App Icons Converter" -ForegroundColor Green
 Write-Host "=================================" -ForegroundColor Green
 
 # Check if source logo exists

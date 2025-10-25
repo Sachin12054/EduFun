@@ -93,7 +93,7 @@ const AdminScreen = () => {
       >
         <View style={styles.headerContent}>
           <Text style={styles.headerTitle}>Admin Dashboard</Text>
-          <Text style={styles.headerSubtitle}>Manage EduFun Platform</Text>
+          <Text style={styles.headerSubtitle}>Manage Kidemy Platform</Text>
         </View>
       </LinearGradient>
 

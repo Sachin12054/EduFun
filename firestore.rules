@@ -1,4 +1,5 @@
-// Firebase Firestore Security Rules for EduFun App
+// Firebase Firestore Security Rules for Kidemy App
+// Updated for new database structure with students and teachers collections
 // Copy this to Firebase Console → Firestore Database → Rules
 
 rules_version = '2';
@@ -11,56 +12,44 @@ service cloud.firestore {
     }
     
     // Helper function to check if user is accessing their own data
-    function isOwner(studentId) {
-      return isSignedIn() && request.auth.uid == studentId;
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
     }
     
     // ==================== STUDENTS COLLECTION ====================
     
     // Students can only access their own data
-    match /Students/{studentId} {
+    match /students/{studentId} {
       // Allow read/write only if the authenticated user matches the studentId
       allow read: if isOwner(studentId);
       allow create: if isOwner(studentId);
       allow update: if isOwner(studentId);
       allow delete: if false; // Prevent deletion for safety
-      
-      // ==================== PROFILE SUBCOLLECTION ====================
-      match /Profile/{document=**} {
-        allow read: if isOwner(studentId);
-        allow write: if isOwner(studentId);
-        allow delete: if false;
-      }
-      
-      // ==================== PROGRESS SUBCOLLECTION ====================
-      match /Progress/{document=**} {
-        allow read: if isOwner(studentId);
-        allow write: if isOwner(studentId);
-        allow delete: if false;
-      }
-      
-      // ==================== LEARNING HISTORY SUBCOLLECTION ====================
-      match /LearningHistory/{activityId} {
-        allow read: if isOwner(studentId);
-        allow create: if isOwner(studentId);
-        allow update: if isOwner(studentId);
-        allow delete: if false; // Keep history permanent
-      }
-      
-      // ==================== COIN TRANSACTIONS SUBCOLLECTION ====================
-      match /CoinTransactions/{transactionId} {
-        allow read: if isOwner(studentId);
-        allow create: if isOwner(studentId);
-        allow update: if false; // Transactions are immutable
-        allow delete: if false; // Transactions cannot be deleted
-      }
+    }
+    
+    // ==================== TEACHERS COLLECTION ====================
+    
+    // Teachers can only access their own data
+    match /teachers/{teacherId} {
+      // Allow read/write only if the authenticated user matches the teacherId
+      allow read: if isOwner(teacherId);
+      allow create: if isOwner(teacherId);
+      allow update: if isOwner(teacherId);
+      allow delete: if false; // Prevent deletion for safety
+    }
+    
+    // ==================== COUNTERS COLLECTION ====================
+    
+    // Allow read/write for student ID generation counter
+    match /counters/studentId {
+      allow read, write: if isSignedIn();
     }
     
     // ==================== LEADERBOARD COLLECTION ====================
     
     // Leaderboard is readable by all authenticated users
     // Only the student can write their own entry
-    match /Leaderboard/{grade}/Students/{studentId} {
+    match /leaderboard/{studentId} {
       allow read: if isSignedIn();
       allow write: if isOwner(studentId);
       allow delete: if false;

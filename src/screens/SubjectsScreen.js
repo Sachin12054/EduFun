@@ -67,7 +67,7 @@ const SubjectsScreen = ({ navigation, route }) => {
                                                subject.icon === 'calculator' ? '🔢' : 
                                                subject.icon === 'flask' ? '🔬' : 
                                                subject.icon === 'people' ? '🌍' : 
-                                               subject.icon === 'bulb' ? '💡' : '📖'}</Text>
+                                               subject.icon === 'flash' ? '💡' : '📖'}</Text>
             {progress.completed > 0 && (
               <View style={styles.completionBadge}>
                 <Ionicons name="checkmark-circle" size={20} color="#4CAF50" />

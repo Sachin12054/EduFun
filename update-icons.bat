@@ -1,7 +1,7 @@
 @echo off
 echo.
 echo ====================================
-echo   EduFun Logo Update Helper
+echo   Kidemy Logo Update Helper
 echo ====================================
 echo.
 

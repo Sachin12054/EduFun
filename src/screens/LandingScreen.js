@@ -13,7 +13,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import EduFunLogo from '../components/EduFunLogo';
+import KidemyLogo from '../components/KidemyLogo';
 
 const { width, height } = Dimensions.get('window');
 
@@ -204,7 +204,7 @@ const LandingScreen = ({ navigation }) => {
             ]}
           >
             <View style={styles.logoContainer}>
-              <EduFunLogo 
+              <KidemyLogo 
                 size={100}
                 showBackground={true}
                 backgroundStyle={styles.logoBackground}
@@ -222,7 +222,7 @@ const LandingScreen = ({ navigation }) => {
               },
             ]}
           >
-            <Text style={styles.title}>EduFun</Text>
+            <Text style={styles.title}>Kidemy</Text>
             <Text style={styles.tagline}>Transform Learning Into Adventure</Text>
           </Animated.View>
 

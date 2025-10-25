@@ -62,7 +62,7 @@ const HelpCenterScreen = ({ navigation }) => {
       title: 'Email Support',
       subtitle: 'Get help via email',
       icon: 'mail',
-      action: () => Linking.openURL('mailto:support@edufun.com'),
+      action: () => Linking.openURL('mailto:support@kidemy.com'),
     },
     {
       title: 'Live Chat',

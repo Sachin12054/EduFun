@@ -24,7 +24,7 @@ const LoadingScreen = () => {
               resizeMode="contain"
             />
           </View>
-          <Text style={styles.title}>EduFun</Text>
+          <Text style={styles.title}>Kidemy</Text>
           <Text style={styles.subtitle}>Gamified Learning Platform</Text>
           <ActivityIndicator size="large" color="#FFFFFF" style={styles.loader} />
           <Text style={styles.loadingText}>Loading...</Text>
